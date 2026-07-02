@@ -2,6 +2,7 @@
 //! connection pair, playing the editor's role. Every receive uses a timeout
 //! so a stuck server fails the test instead of hanging CI.
 
+use std::collections::VecDeque;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -11,11 +12,13 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Exit, Initialized,
     Notification as _, PublishDiagnostics,
 };
-use lsp_types::request::{CodeActionRequest, Formatting, Initialize, Request as _, Shutdown};
+use lsp_types::request::{
+    CodeActionRequest, ExecuteCommand, Formatting, Initialize, Request as _, Shutdown,
+};
 use lsp_types::{
     ClientCapabilities, CodeAction, CodeActionContext, CodeActionKind, CodeActionOrCommand,
     CodeActionParams, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DocumentFormattingParams, FormattingOptions,
+    DidOpenTextDocumentParams, DocumentFormattingParams, ExecuteCommandParams, FormattingOptions,
     GeneralClientCapabilities, InitializeParams, InitializeResult, NumberOrString, OneOf, Position,
     PositionEncodingKind, PublishDiagnosticsParams, Range, TextDocumentContentChangeEvent,
     TextDocumentIdentifier, TextDocumentItem, TextDocumentSyncCapability, TextEdit, Uri,
@@ -29,6 +32,10 @@ struct TestClient {
     conn: Connection,
     server: Option<JoinHandle<Result<(), csv_lsp::server::BoxError>>>,
     next_id: i32,
+    /// Notifications received while waiting for a response (e.g. the fresh
+    /// diagnostics a command publishes *before* answering) — consumed by
+    /// `recv_diagnostics` instead of being dropped.
+    pending: VecDeque<Message>,
 }
 
 impl TestClient {
@@ -40,6 +47,7 @@ impl TestClient {
             conn: client_conn,
             server: Some(server),
             next_id: 0,
+            pending: VecDeque::new(),
         };
         let params = InitializeParams {
             capabilities: ClientCapabilities {
@@ -63,6 +71,14 @@ impl TestClient {
             .expect("timed out waiting for a server message")
     }
 
+    /// Buffered messages first, then the wire.
+    fn next_message(&mut self) -> Message {
+        if let Some(message) = self.pending.pop_front() {
+            return message;
+        }
+        self.recv()
+    }
+
     /// Send a request and wait for its response, skipping interleaved
     /// notifications (e.g. diagnostics).
     fn raw_request(&mut self, method: &str, params: serde_json::Value) -> Response {
@@ -80,7 +96,7 @@ impl TestClient {
                     assert_eq!(response.id, id, "response for the wrong request");
                     return response;
                 }
-                Message::Notification(_) => continue,
+                notification @ Message::Notification(_) => self.pending.push_back(notification),
                 Message::Request(request) => panic!("unexpected server request {request:?}"),
             }
         }
@@ -107,9 +123,9 @@ impl TestClient {
     }
 
     /// Wait for the next `textDocument/publishDiagnostics` notification.
-    fn recv_diagnostics(&self) -> PublishDiagnosticsParams {
+    fn recv_diagnostics(&mut self) -> PublishDiagnosticsParams {
         loop {
-            match self.recv() {
+            match self.next_message() {
                 Message::Notification(notification)
                     if notification.method == PublishDiagnostics::METHOD =>
                 {
@@ -235,6 +251,70 @@ fn edits_for(action: &CodeAction, uri: &Uri) -> Vec<TextEdit> {
 fn cursor(line: u32, character: u32) -> Range {
     let at = Position { line, character };
     Range { start: at, end: at }
+}
+
+#[test]
+fn reinterpret_fixes_a_mislabeled_semicolon_file() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/mislabeled.csv".parse().unwrap();
+    // Semicolon content under a .csv name parses as single-column CSV —
+    // the missing cell on row 1 is invisible.
+    client.open(&uri, "csv", 1, "a;b;c\n1;2\n");
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    let reinterpret = actions
+        .iter()
+        .find(|action| action.title == "Reinterpret as SSV")
+        .expect("reinterpret offered");
+    assert!(reinterpret.edit.is_none(), "no text change");
+    let command = reinterpret.command.clone().expect("carries a command");
+
+    let _: Option<serde_json::Value> = client.request::<ExecuteCommand>(ExecuteCommandParams {
+        command: command.command,
+        arguments: command.arguments.unwrap_or_default(),
+        work_done_progress_params: Default::default(),
+    });
+
+    // The server reparsed and pushed the sane SSV view.
+    let published = client.recv_diagnostics();
+    assert_eq!(published.diagnostics.len(), 1);
+    assert_eq!(
+        published.diagnostics[0].code,
+        Some(NumberOrString::String("row-missing-cells".into()))
+    );
+
+    // Follow-up actions reflect the new dialect.
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|action| action.title == "Reinterpret as CSV")
+    );
+
+    client.shutdown();
+}
+
+#[test]
+fn unknown_commands_get_invalid_params() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let response = client.raw_request(
+        ExecuteCommand::METHOD,
+        serde_json::json!({ "command": "csv-lsp.frobnicate", "arguments": [] }),
+    );
+    let error = response.error.expect("expected an error response");
+    assert_eq!(error.code, ErrorCode::InvalidParams as i32);
+    client.shutdown();
 }
 
 #[test]
@@ -394,7 +474,7 @@ fn initialize_falls_back_to_utf16() {
 
 #[test]
 fn document_lifecycle_publishes_and_clears_diagnostics() {
-    let (client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
     let uri: Uri = "file:///t/data.csv".parse().unwrap();
 
     client.open(&uri, "csv", 1, "a,b\n1,2\n");
@@ -417,7 +497,7 @@ fn document_lifecycle_publishes_and_clears_diagnostics() {
 
 #[test]
 fn ragged_and_quoting_diagnostics_flow_to_the_client() {
-    let (client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
     let uri: Uri = "file:///t/ragged.csv".parse().unwrap();
 
     client.open(&uri, "csv", 1, "a,b,c\n1,2\n");

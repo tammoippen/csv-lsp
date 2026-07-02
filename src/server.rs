@@ -14,16 +14,17 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Notification as _,
     PublishDiagnostics,
 };
-use lsp_types::request::{CodeActionRequest, Formatting, Request as _};
+use lsp_types::request::{CodeActionRequest, ExecuteCommand, Formatting, Request as _};
 use lsp_types::{
-    CodeAction, CodeActionOrCommand, CodeActionParams, Diagnostic, DiagnosticSeverity,
-    DocumentFormattingParams, InitializeParams, NumberOrString, PublishDiagnosticsParams, TextEdit,
-    WorkspaceEdit,
+    CodeAction, CodeActionOrCommand, CodeActionParams, Command, Diagnostic, DiagnosticSeverity,
+    DocumentFormattingParams, ExecuteCommandParams, InitializeParams, NumberOrString,
+    PublishDiagnosticsParams, TextEdit, Uri, WorkspaceEdit,
 };
 
 use crate::capabilities;
+use crate::dialect::Dialect;
 use crate::document::{Document, Store};
-use crate::features::{Action, ActionContext, Diag, Registry, Severity};
+use crate::features::{Action, ActionContext, Diag, Registry, ServerCommand, Severity};
 use crate::log;
 use crate::parse::Span;
 use crate::position::PositionEncoding;
@@ -67,7 +68,7 @@ pub fn run(connection: Connection) -> Result<(), BoxError> {
                 if connection.handle_shutdown(&request)? {
                     return Ok(());
                 }
-                let response = handle_request(&mut state, request);
+                let response = handle_request(&mut state, &connection, request);
                 connection.sender.send(Message::Response(response))?;
             }
             Message::Notification(notification) => {
@@ -197,9 +198,11 @@ fn cast_notification<N: lsp_types::notification::Notification>(
 }
 
 /// Answer a request, converting errors and panics into error responses.
-fn handle_request(state: &mut ServerState, request: Request) -> Response {
+fn handle_request(state: &mut ServerState, connection: &Connection, request: Request) -> Response {
     let id = request.id.clone();
-    match catch_unwind(AssertUnwindSafe(|| dispatch_request(state, request))) {
+    match catch_unwind(AssertUnwindSafe(|| {
+        dispatch_request(state, connection, request)
+    })) {
         Ok(Ok(response)) => response,
         Ok(Err(err)) => Response::new_err(id, err.code as i32, err.message),
         Err(_) => Response::new_err(
@@ -210,7 +213,11 @@ fn handle_request(state: &mut ServerState, request: Request) -> Response {
     }
 }
 
-fn dispatch_request(state: &mut ServerState, request: Request) -> Result<Response, RequestError> {
+fn dispatch_request(
+    state: &mut ServerState,
+    connection: &Connection,
+    request: Request,
+) -> Result<Response, RequestError> {
     match request.method.as_str() {
         CodeActionRequest::METHOD => {
             let (id, params) = cast_request::<CodeActionRequest>(request)?;
@@ -219,6 +226,13 @@ fn dispatch_request(state: &mut ServerState, request: Request) -> Result<Respons
         Formatting::METHOD => {
             let (id, params) = cast_request::<Formatting>(request)?;
             Ok(Response::new_ok(id, handle_formatting(state, &params)))
+        }
+        ExecuteCommand::METHOD => {
+            let (id, params) = cast_request::<ExecuteCommand>(request)?;
+            handle_execute_command(state, connection, params)?;
+            // Effects travel as notifications (fresh diagnostics); the
+            // response itself is empty.
+            Ok(Response::new_ok(id, serde_json::Value::Null))
         }
         _ => Ok(Response::new_err(
             request.id,
@@ -253,38 +267,106 @@ fn handle_code_action(state: &ServerState, params: &CodeActionParams) -> Vec<Cod
         .collect()
 }
 
-/// The boundary conversion for actions: spans → ranges, plus one workspace
-/// edit per action targeting this document (`changes` map form — no
-/// executeCommand round trip, broadest client compatibility).
+/// The boundary conversion for actions: spans → ranges, one workspace edit
+/// per text action (`changes` map form — broadest client compatibility),
+/// and an LSP `Command` for actions carrying a server-side effect.
 fn to_lsp_action(
     action: Action,
     doc: &Document,
     encoding: PositionEncoding,
 ) -> CodeActionOrCommand {
-    let edits: Vec<TextEdit> = action
-        .edits
-        .into_iter()
-        .map(|(span, new_text)| TextEdit {
-            range: doc.line_index.range(&doc.text, span, encoding),
-            new_text,
-        })
-        .collect();
-    let diagnostics: Vec<Diagnostic> = action
-        .fixes
+    let Action {
+        title,
+        kind,
+        edits,
+        command,
+        fixes,
+        is_preferred,
+    } = action;
+    let edit = (!edits.is_empty()).then(|| {
+        let text_edits: Vec<TextEdit> = edits
+            .into_iter()
+            .map(|(span, new_text)| TextEdit {
+                range: doc.line_index.range(&doc.text, span, encoding),
+                new_text,
+            })
+            .collect();
+        WorkspaceEdit {
+            changes: Some(HashMap::from([(doc.uri.clone(), text_edits)])),
+            ..Default::default()
+        }
+    });
+    let command = command.map(|server_command| to_lsp_command(&title, server_command, doc));
+    let diagnostics: Vec<Diagnostic> = fixes
         .into_iter()
         .map(|diag| to_lsp_diagnostic(diag, doc, encoding))
         .collect();
     CodeActionOrCommand::CodeAction(CodeAction {
-        title: action.title,
-        kind: Some(action.kind),
+        title,
+        kind: Some(kind),
         diagnostics: (!diagnostics.is_empty()).then_some(diagnostics),
-        edit: Some(WorkspaceEdit {
-            changes: Some(HashMap::from([(doc.uri.clone(), edits)])),
-            ..Default::default()
-        }),
-        is_preferred: action.is_preferred.then_some(true),
+        edit,
+        command,
+        is_preferred: is_preferred.then_some(true),
         ..Default::default()
     })
+}
+
+/// Encode a [`ServerCommand`] as the LSP `Command` the client echoes back
+/// via `workspace/executeCommand`.
+fn to_lsp_command(title: &str, command: ServerCommand, doc: &Document) -> Command {
+    match command {
+        ServerCommand::SetDialect { dialect } => Command {
+            title: title.to_owned(),
+            command: capabilities::SET_DIALECT_COMMAND.to_owned(),
+            arguments: Some(vec![
+                serde_json::json!(doc.uri.as_str()),
+                serde_json::json!(dialect.name().to_ascii_lowercase()),
+            ]),
+        },
+    }
+}
+
+/// Execute `csv-lsp.setDialect`: re-parse the document under the requested
+/// dialect and republish its diagnostics.
+fn handle_execute_command(
+    state: &mut ServerState,
+    connection: &Connection,
+    params: ExecuteCommandParams,
+) -> Result<(), RequestError> {
+    let invalid = |message: String| RequestError {
+        code: ErrorCode::InvalidParams,
+        message,
+    };
+    if params.command != capabilities::SET_DIALECT_COMMAND {
+        return Err(invalid(format!("unknown command `{}`", params.command)));
+    }
+    let [uri_arg, dialect_arg] = params.arguments.as_slice() else {
+        return Err(invalid(format!(
+            "`{}` expects [uri, dialect], got {} argument(s)",
+            params.command,
+            params.arguments.len()
+        )));
+    };
+    let uri: Uri = uri_arg
+        .as_str()
+        .and_then(|raw| raw.parse().ok())
+        .ok_or_else(|| invalid(format!("invalid uri argument {uri_arg}")))?;
+    let dialect = dialect_arg
+        .as_str()
+        .and_then(Dialect::from_language_id)
+        .ok_or_else(|| invalid(format!("invalid dialect argument {dialect_arg}")))?;
+
+    // Unknown documents are tolerated (closed since the action was offered).
+    if let Some(doc) = state.store.set_dialect(&uri, dialect) {
+        publish_diagnostics(connection, state.encoding, &state.registry, doc).map_err(|err| {
+            RequestError {
+                code: ErrorCode::InternalError,
+                message: err.to_string(),
+            }
+        })?;
+    }
+    Ok(())
 }
 
 /// Formatting = align columns. `FormattingOptions` (tab width etc.) carry

@@ -84,6 +84,15 @@ impl Store {
         Some(doc)
     }
 
+    /// Re-parse a document under a different dialect (the
+    /// `csv-lsp.setDialect` command); text and version are untouched.
+    pub fn set_dialect(&mut self, uri: &Uri, dialect: Dialect) -> Option<&Document> {
+        let doc = self.docs.get_mut(uri.as_str())?;
+        doc.dialect = dialect;
+        doc.table = parse(&doc.text, dialect);
+        Some(doc)
+    }
+
     /// Forget a closed document.
     pub fn close(&mut self, uri: &Uri) {
         self.docs.remove(uri.as_str());
@@ -152,6 +161,25 @@ mod tests {
             .line_index
             .position(&doc.text, 2, crate::position::PositionEncoding::Utf8);
         assert_eq!(pos.line, 1);
+    }
+
+    #[test]
+    fn set_dialect_reparses_in_place() {
+        let mut store = Store::default();
+        let u = uri("file:///d/mislabeled.csv");
+        store.open(u.clone(), "csv", 1, "a;b\n".into());
+        assert_eq!(store.get(&u).unwrap().table.rows[0].cells.len(), 1);
+
+        let doc = store.set_dialect(&u, Dialect::Ssv).unwrap();
+        assert_eq!(doc.dialect, Dialect::Ssv);
+        assert_eq!(doc.table.rows[0].cells.len(), 2);
+        assert_eq!(doc.version, 1); // untouched
+
+        assert!(
+            store
+                .set_dialect(&uri("file:///nope"), Dialect::Tsv)
+                .is_none()
+        );
     }
 
     #[test]
