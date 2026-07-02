@@ -40,6 +40,7 @@ impl ActionProvider for AlignColumns {
             title: "Align columns".to_owned(),
             kind: CodeActionKind::SOURCE,
             edits,
+            command: None,
             fixes: Vec::new(),
             is_preferred: false,
         }]

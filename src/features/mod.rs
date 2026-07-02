@@ -10,9 +10,11 @@ pub mod compact;
 pub mod pad_rows;
 pub mod parse_errors;
 pub mod ragged_rows;
+pub mod reinterpret;
 
 use lsp_types::CodeActionKind;
 
+use crate::dialect::Dialect;
 use crate::document::Document;
 use crate::parse::{Span, Table};
 
@@ -90,6 +92,18 @@ impl ActionContext<'_> {
     }
 }
 
+/// A command the server executes on itself when the user picks the action
+/// (`workspace/executeCommand`) — the channel for actions that change server
+/// state instead of document text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerCommand {
+    /// Re-parse the document under a different dialect.
+    SetDialect {
+        /// The dialect to switch to.
+        dialect: Dialect,
+    },
+}
+
 /// A code action in crate-internal form.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Action {
@@ -97,9 +111,12 @@ pub struct Action {
     pub title: String,
     /// LSP kind (`quickfix`, `source`, …); drives client-side grouping.
     pub kind: CodeActionKind,
-    /// Replacements (span → new text): non-overlapping, in document order;
-    /// never empty (a no-op action must simply not be offered).
+    /// Replacements (span → new text): non-overlapping, in document order.
+    /// Empty only for pure command actions — a no-op text action must
+    /// simply not be offered.
     pub edits: Vec<(Span, String)>,
+    /// Server-side effect executed when the user picks the action.
+    pub command: Option<ServerCommand>,
     /// The diagnostics this action fixes, for editor linkage.
     pub fixes: Vec<Diag>,
     /// Marks the editor's default choice.
@@ -133,6 +150,7 @@ impl Registry {
                 Box::new(pad_rows::PadRows),
                 Box::new(align::AlignColumns),
                 Box::new(compact::CompactColumns),
+                Box::new(reinterpret::ReinterpretDialect),
             ],
         }
     }
@@ -263,18 +281,26 @@ mod tests {
 
         let offset = doc.text.find("1,2").unwrap();
         let mut ctx = ctx_at(&doc, offset);
-        assert_eq!(registry.actions(&ctx).len(), 2); // quickfix + fix-all
+        let kinds = |actions: &[super::Action]| -> Vec<_> {
+            actions.iter().map(|a| a.kind.clone()).collect()
+        };
+
+        let unfiltered = registry.actions(&ctx);
+        assert!(kinds(&unfiltered).contains(&CodeActionKind::QUICKFIX));
+        assert!(kinds(&unfiltered).contains(&CodeActionKind::SOURCE_FIX_ALL));
 
         let only = [CodeActionKind::SOURCE];
         ctx.only = Some(&only);
         let actions = registry.actions(&ctx);
-        assert_eq!(actions.len(), 1);
-        assert_eq!(actions[0].kind, CodeActionKind::SOURCE_FIX_ALL);
+        assert!(!actions.is_empty());
+        // Prefix semantics: plain source AND source.fixAll survive; the
+        // quickfix does not.
+        assert!(kinds(&actions).contains(&CodeActionKind::SOURCE_FIX_ALL));
+        assert!(!kinds(&actions).contains(&CodeActionKind::QUICKFIX));
 
         let only = [CodeActionKind::QUICKFIX];
         ctx.only = Some(&only);
         let actions = registry.actions(&ctx);
-        assert_eq!(actions.len(), 1);
-        assert_eq!(actions[0].kind, CodeActionKind::QUICKFIX);
+        assert_eq!(kinds(&actions), [CodeActionKind::QUICKFIX]);
     }
 }
