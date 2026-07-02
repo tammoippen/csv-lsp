@@ -9,6 +9,7 @@ pub mod align;
 pub mod compact;
 pub mod pad_rows;
 pub mod parse_errors;
+pub mod quote;
 pub mod ragged_rows;
 pub mod reinterpret;
 pub mod transform;
@@ -157,6 +158,7 @@ impl Registry {
                 Box::new(compact::CompactColumns),
                 Box::new(reinterpret::ReinterpretDialect),
                 Box::new(transform::ConvertDialect),
+                Box::new(quote::QuoteCells),
             ],
         }
     }
