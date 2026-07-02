@@ -7,6 +7,7 @@
 pub mod capabilities;
 pub mod dialect;
 pub mod document;
+pub mod features;
 pub mod parse;
 pub mod position;
 pub mod server;
