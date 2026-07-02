@@ -161,6 +161,17 @@ pub struct Row {
     pub cells: Vec<Cell>,
 }
 
+impl Row {
+    /// A blank row (empty line or spaces only): exactly one unquoted cell
+    /// with empty content. Blank rows are separators — no diagnostics, no
+    /// part in column-count checks, rendered as empty lines.
+    pub fn is_blank(&self) -> bool {
+        self.cells.len() == 1
+            && self.cells[0].quoting == Quoting::Unquoted
+            && self.cells[0].content_span.is_empty()
+    }
+}
+
 /// The parse result: always produced, never fails.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Table {
@@ -178,6 +189,42 @@ pub struct Table {
     /// Whether the text ends with a row terminator (no phantom empty row is
     /// produced for it).
     pub ends_with_newline: bool,
+}
+
+impl Table {
+    /// The header: the first non-blank row. Its cell count is the column
+    /// contract the rest of the file is checked against.
+    pub fn header(&self) -> Option<&Row> {
+        self.rows.iter().find(|row| !row.is_blank())
+    }
+
+    /// Index of the header row within `rows`.
+    pub fn header_index(&self) -> Option<usize> {
+        self.rows.iter().position(|row| !row.is_blank())
+    }
+
+    /// The expected column count (the header's cell count).
+    pub fn expected_columns(&self) -> Option<usize> {
+        self.header().map(|row| row.cells.len())
+    }
+
+    /// The row under `offset`, with an **inclusive** end: a cursor sitting
+    /// at the end of a row (on its terminator) still belongs to it.
+    pub fn row_at(&self, offset: usize) -> Option<usize> {
+        let after = self.rows.partition_point(|row| row.span.start <= offset);
+        let index = after.checked_sub(1)?;
+        (offset <= self.rows[index].span.end).then_some(index)
+    }
+
+    /// The `(row, column)` under `offset`. A cursor on a delimiter resolves
+    /// to the cell left of it; a cursor at the row end to the last cell.
+    pub fn cell_at(&self, offset: usize) -> Option<(usize, usize)> {
+        let row_index = self.row_at(offset)?;
+        let cells = &self.rows[row_index].cells;
+        let after = cells.partition_point(|cell| cell.span.start <= offset);
+        let column = after.checked_sub(1)?;
+        (offset <= cells[column].span.end).then_some((row_index, column))
+    }
 }
 
 /// Parse `text` under `dialect`. Total: never fails, never panics.
@@ -594,6 +641,55 @@ mod tests {
         assert_eq!(error.kind, ParseErrorKind::TextAfterClosingQuote);
         assert_eq!(error.span.slice(text), "y");
         assert_eq!(error.row, 0);
+    }
+
+    #[test]
+    fn blank_rows_are_separators_and_the_header_skips_them() {
+        let text = "\na,b\n   \n1,2\n";
+        let table = parse(text, Dialect::Csv);
+
+        assert!(table.rows[0].is_blank());
+        assert!(table.rows[2].is_blank()); // spaces only
+        assert!(!table.rows[1].is_blank());
+
+        assert_eq!(table.header_index(), Some(1));
+        assert_eq!(table.header().unwrap().span.slice(text), "a,b");
+        assert_eq!(table.expected_columns(), Some(2));
+    }
+
+    #[test]
+    fn a_file_of_blank_rows_has_no_header() {
+        let table = parse("\n\n", Dialect::Csv);
+        assert_eq!(table.header_index(), None);
+        assert_eq!(table.expected_columns(), None);
+    }
+
+    #[test]
+    fn cell_at_resolves_cursor_positions() {
+        let text = "ab,cd\nef,gh\n";
+        let table = parse(text, Dialect::Csv);
+
+        // Mid-cell.
+        assert_eq!(table.cell_at(1), Some((0, 0)));
+        assert_eq!(table.cell_at(4), Some((0, 1)));
+        // On the delimiter (offset 2): the cell left of it.
+        assert_eq!(table.cell_at(2), Some((0, 0)));
+        // At the row end (on the terminator): the row's last cell.
+        assert_eq!(table.cell_at(5), Some((0, 1)));
+        // Start of the second row.
+        assert_eq!(table.cell_at(6), Some((1, 0)));
+        // Past the last row's inclusive end.
+        assert_eq!(table.cell_at(12), None);
+        assert_eq!(table.row_at(99), None);
+    }
+
+    #[test]
+    fn cell_at_works_inside_multi_line_quoted_cells() {
+        let text = "\"a\nb\",c\n";
+        let table = parse(text, Dialect::Csv);
+        // Offset 3 is the `b` on the second editor line — still row 0.
+        assert_eq!(table.cell_at(3), Some((0, 0)));
+        assert_eq!(table.cell_at(6), Some((0, 1)));
     }
 
     #[test]
