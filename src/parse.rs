@@ -298,6 +298,12 @@ impl Parser<'_> {
                 None | Some(b'\n' | b'\r') => break CellEnd::RowEnd,
                 Some(&b) if b == self.delimiter => break CellEnd::Delimiter,
                 Some(b' ') => self.pos += 1, // padding, unless content follows
+                Some(b'"') => {
+                    // Stray quote: report it, keep it as literal content.
+                    self.error(ParseErrorKind::StrayQuote, self.pos, self.pos + 1);
+                    self.pos += 1;
+                    content_end = self.pos;
+                }
                 Some(_) => {
                     self.pos += 1;
                     content_end = self.pos;
@@ -351,14 +357,24 @@ impl Parser<'_> {
             }
         };
         // InAfterQuoted: alignment padding until delimiter / row end.
+        let mut garbage: Option<Span> = None;
         let end = loop {
             match self.bytes.get(self.pos) {
                 None | Some(b'\n' | b'\r') => break CellEnd::RowEnd,
                 Some(&b) if b == self.delimiter => break CellEnd::Delimiter,
                 Some(b' ') => self.pos += 1, // tolerated: our own align layout
-                Some(_) => self.pos += 1,    // garbage: error lands in a later cycle
+                Some(_) => {
+                    // Garbage after the closing quote: skip it, growing one
+                    // error span (trailing spaces stay excluded).
+                    let start = garbage.map_or(self.pos, |span| span.start);
+                    self.pos += 1;
+                    garbage = Some(Span::new(start, self.pos));
+                }
             }
         };
+        if let Some(span) = garbage {
+            self.error(ParseErrorKind::TextAfterClosingQuote, span.start, span.end);
+        }
         let cell = Cell {
             span: Span::new(span_start, self.pos),
             content_span: Span::new(content_start, content_end),
@@ -547,6 +563,36 @@ mod tests {
         assert_eq!(error.kind, ParseErrorKind::UnclosedQuote);
         assert_eq!(error.span.slice(text), "\"");
         assert_eq!(error.span.start, 2);
+        assert_eq!(error.row, 0);
+    }
+
+    #[test]
+    fn stray_quote_stays_literal_and_is_reported() {
+        let text = "5\" bolt,x\n";
+        let table = parse(text, Dialect::Csv);
+
+        assert_eq!(table.rows[0].cells[0].value(text), "5\" bolt");
+        assert_eq!(table.errors.len(), 1);
+        let error = &table.errors[0];
+        assert_eq!(error.kind, ParseErrorKind::StrayQuote);
+        assert_eq!(error.span.start, 1);
+        assert_eq!(error.span.slice(text), "\"");
+    }
+
+    #[test]
+    fn text_after_closing_quote_is_skipped_and_reported() {
+        let text = "\"x\" y,z\n";
+        let table = parse(text, Dialect::Csv);
+
+        let cell = &table.rows[0].cells[0];
+        assert_eq!(cell.value(text), "x");
+        assert_eq!(cell.span.slice(text), "\"x\" y");
+        assert_eq!(table.rows[0].cells[1].value(text), "z");
+
+        assert_eq!(table.errors.len(), 1);
+        let error = &table.errors[0];
+        assert_eq!(error.kind, ParseErrorKind::TextAfterClosingQuote);
+        assert_eq!(error.span.slice(text), "y");
         assert_eq!(error.row, 0);
     }
 
