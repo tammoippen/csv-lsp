@@ -6,6 +6,7 @@
 //! [`Table`]; the server converts to LSP types at its boundary only.
 
 pub mod align;
+pub mod columns;
 pub mod compact;
 pub mod pad_rows;
 pub mod parse_errors;
@@ -159,6 +160,7 @@ impl Registry {
                 Box::new(reinterpret::ReinterpretDialect),
                 Box::new(transform::ConvertDialect),
                 Box::new(quote::QuoteCells),
+                Box::new(columns::ColumnEdits),
             ],
         }
     }
