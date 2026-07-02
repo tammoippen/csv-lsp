@@ -119,10 +119,15 @@ lone `\r`, matching the LSP spec) and converts `Span ↔ lsp::Range`.
   known before ours are built.
 - Advertised capabilities: `positionEncoding` (negotiated), `textDocumentSync = FULL`
   (+ open/close), `codeActionProvider` with kinds `[quickfix, source, source.fixAll]`
-  (no lazy resolve — edits are cheap and computed eagerly), and
-  `documentFormattingProvider`.
-- **No `executeCommand`**: every code action carries a complete `WorkspaceEdit`
-  (`changes` map form) — no client→server round trip, broadest client compatibility.
+  (no lazy resolve — edits are cheap and computed eagerly),
+  `documentFormattingProvider`, and one `executeCommand`: `csv-lsp.setDialect`.
+- Text actions carry a complete `WorkspaceEdit` (`changes` map form — no
+  client→server round trip). `executeCommand` exists solely for actions that
+  change **server state** instead of text: `Reinterpret as …` flips a
+  document's parsing dialect and republishes diagnostics.
+- Applied conversions flip the dialect too: `Convert to …` actions are
+  remembered per URI (converted text + target dialect) and a `didChange`
+  matching one adopts that dialect — dismissed actions cost nothing.
 - Diagnostics use the push model: reparse + publish on `didOpen`/`didChange`; publish
   an empty list on `didClose` (clears the editor gutter).
 - Request handlers are wrapped in `catch_unwind`: a bug in one feature answers that
@@ -193,8 +198,6 @@ the editor cursor stable and makes formatting idempotent (`[]` when already alig
 
 ## Future features (designed-for, not yet implemented)
 
-- **Transform csv↔tsv↔ssv** — one provider; `render` with a different `dialect` and a
-  quote policy that re-quotes cells containing the new delimiter.
 - **Quote cell/column** — one provider; per-cell edits via `encode_cell(force_quote)`.
 - **Add column left/right** — one provider; per-row single-delimiter inserts at cell
   boundaries (cell spans give exact offsets).
