@@ -196,14 +196,20 @@ Align and compact are the *same* pipeline with `align: Some(widths)` vs `None`.
 `TextEdit` by trimming the common prefix/suffix (char-boundary-snapped), which keeps
 the editor cursor stable and makes formatting idempotent (`[]` when already aligned).
 
-## Future features (designed-for, not yet implemented)
+## Backlog
 
-- **Add column left/right** — one provider; per-row single-delimiter inserts at cell
-  boundaries (cell spans give exact offsets).
-- **Delete column** — one provider; per-row deletes of `cell.span` + one adjacent
-  delimiter.
+All features from the original scope are implemented. Candidates for later:
+
 - **Unquote cell/column** — the inverse of the quote actions, only where the
   value survives unquoted.
+- **Extra-cells quickfix** — merging or dropping surplus cells (deleting data
+  needs more care than adding empty cells).
+- **Configuration** via `initializationOptions`: severity overrides,
+  blank-line policy, header conventions.
+- **Incremental sync** (isolated in `Document`) if very large files ever make
+  FULL sync noticeable.
+- **Rename-file-on-convert** via LSP `RenameFile` resource operations, where
+  clients support them.
 
 ## Performance stance
 

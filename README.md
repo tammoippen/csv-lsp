@@ -37,10 +37,11 @@ with fixes attached.
 - **Quote cell / quote column** — wrap the cell under the cursor (or every
   unquoted cell of its column, header included) in RFC 4180 quotes. Padding
   stays outside the quotes; already-quoted cells are left alone.
+- **Add / delete columns** — insert an empty column left or right of the one
+  under the cursor, or delete it across the whole file (header included, so
+  clean files stay clean; one undo restores everything).
 - Unicode-aware alignment (CJK and accented characters measure by display
   width), BOM/CRLF/final-newline preservation, multi-line quoted cells.
-
-Planned on the same foundation: adding and deleting columns.
 
 ## Install
 
@@ -88,7 +89,7 @@ identical makes your entry merge with it. Verify with `hx --health csv`.
 
 Daily driving: diagnostics appear as you type; `space`+`a` opens the code
 actions (pad row, pad all, align, compact, reinterpret, convert, quote
-cell/column); `:format` aligns.
+cell/column, add/delete column); `:format` aligns.
 
 ## Dialects and conventions
 
