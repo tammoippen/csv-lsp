@@ -148,4 +148,4 @@ keystroke (fine into the tens of MB).
 
 ## License
 
-MIT or Apache-2.0, at your option.
+MIT

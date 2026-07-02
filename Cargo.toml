@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.85"
 description = "Language server for CSV/TSV/SSV files: diagnostics, quickfixes, column alignment"
 repository = "https://github.com/tammoippen/csv-lsp"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 keywords = ["lsp", "language-server", "csv", "tsv"]
 categories = ["development-tools"]
 
