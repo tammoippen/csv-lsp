@@ -87,6 +87,47 @@ impl LineIndex {
             character: character as u32,
         }
     }
+
+    /// Convert an LSP position into a byte offset, clamping per the spec.
+    ///
+    /// A line past the end of the document maps to the document end; a
+    /// character past the end of its line maps to the line end (before the
+    /// terminator); a character landing inside a multi-unit character (e.g.
+    /// between UTF-16 surrogate halves) snaps back to that character's start.
+    pub fn offset(&self, text: &str, pos: lsp_types::Position, enc: PositionEncoding) -> usize {
+        let Some(&line_start) = self.line_starts.get(pos.line as usize) else {
+            return text.len();
+        };
+        let content_end = self.line_content_end(text, pos.line as usize);
+        let line_text = &text[line_start..content_end];
+        let mut remaining = pos.character as usize;
+        for (i, ch) in line_text.char_indices() {
+            let width = match enc {
+                PositionEncoding::Utf8 => ch.len_utf8(),
+                PositionEncoding::Utf16 => ch.len_utf16(),
+                PositionEncoding::Utf32 => 1,
+            };
+            if remaining < width {
+                return line_start + i;
+            }
+            remaining -= width;
+        }
+        content_end
+    }
+
+    /// End of a line's content: the offset of its terminator, or `text.len()`
+    /// for the last line.
+    fn line_content_end(&self, text: &str, line: usize) -> usize {
+        let Some(&next_start) = self.line_starts.get(line + 1) else {
+            return text.len();
+        };
+        let bytes = text.as_bytes();
+        if next_start >= 2 && bytes[next_start - 2] == b'\r' && bytes[next_start - 1] == b'\n' {
+            next_start - 2
+        } else {
+            next_start - 1
+        }
+    }
 }
 
 #[cfg(test)]
@@ -172,5 +213,47 @@ mod tests {
             index.position(MIXED, 999, PositionEncoding::Utf16),
             pos(2, 0)
         );
+    }
+
+    #[test]
+    fn offset_round_trips_positions_in_every_encoding() {
+        let index = LineIndex::new(MIXED);
+        for enc in [
+            PositionEncoding::Utf8,
+            PositionEncoding::Utf16,
+            PositionEncoding::Utf32,
+        ] {
+            for (offset, _) in MIXED.char_indices() {
+                let position = index.position(MIXED, offset, enc);
+                assert_eq!(index.offset(MIXED, position, enc), offset, "{enc:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn offset_clamps_line_past_the_end_to_document_end() {
+        let index = LineIndex::new("ab\ncd");
+        assert_eq!(
+            index.offset("ab\ncd", pos(99, 0), PositionEncoding::Utf8),
+            5
+        );
+    }
+
+    #[test]
+    fn offset_clamps_character_to_the_line_content_end() {
+        let text = "ab\r\ncd";
+        let index = LineIndex::new(text);
+        // Character 99 on line 0 stops before the \r\n terminator.
+        assert_eq!(index.offset(text, pos(0, 99), PositionEncoding::Utf8), 2);
+        assert_eq!(index.offset(text, pos(1, 99), PositionEncoding::Utf8), 6);
+    }
+
+    #[test]
+    fn offset_snaps_utf16_surrogate_halves_to_the_char_start() {
+        let text = "😀x";
+        let index = LineIndex::new(text);
+        // Character 1 lands between the surrogate halves of 😀 (units 0..2).
+        assert_eq!(index.offset(text, pos(0, 1), PositionEncoding::Utf16), 0);
+        assert_eq!(index.offset(text, pos(0, 2), PositionEncoding::Utf16), 4);
     }
 }
