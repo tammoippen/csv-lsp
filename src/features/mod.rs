@@ -11,6 +11,7 @@ pub mod pad_rows;
 pub mod parse_errors;
 pub mod ragged_rows;
 pub mod reinterpret;
+pub mod transform;
 
 use lsp_types::CodeActionKind;
 
@@ -117,6 +118,10 @@ pub struct Action {
     pub edits: Vec<(Span, String)>,
     /// Server-side effect executed when the user picks the action.
     pub command: Option<ServerCommand>,
+    /// The dialect the document will be in once the edits are applied —
+    /// the server watches for the matching `didChange` and flips the
+    /// document's dialect so diagnostics stay coherent after a conversion.
+    pub dialect_change: Option<Dialect>,
     /// The diagnostics this action fixes, for editor linkage.
     pub fixes: Vec<Diag>,
     /// Marks the editor's default choice.
@@ -151,6 +156,7 @@ impl Registry {
                 Box::new(align::AlignColumns),
                 Box::new(compact::CompactColumns),
                 Box::new(reinterpret::ReinterpretDialect),
+                Box::new(transform::ConvertDialect),
             ],
         }
     }

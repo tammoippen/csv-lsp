@@ -280,6 +280,7 @@ fn to_lsp_action(
         kind,
         edits,
         command,
+        dialect_change: _, // consumed by handle_code_action's pending map
         fixes,
         is_preferred,
     } = action;

@@ -41,6 +41,7 @@ impl ActionProvider for AlignColumns {
             kind: CodeActionKind::SOURCE,
             edits,
             command: None,
+            dialect_change: None,
             fixes: Vec::new(),
             is_preferred: false,
         }]

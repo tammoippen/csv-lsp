@@ -36,6 +36,7 @@ impl ActionProvider for PadRows {
                 kind: CodeActionKind::QUICKFIX,
                 edits: vec![pad_edit(table, short, &delimiter)],
                 command: None,
+                dialect_change: None,
                 fixes: vec![missing_cells_diag(table, short)],
                 is_preferred: true,
             });
@@ -51,6 +52,7 @@ impl ActionProvider for PadRows {
                     .map(|&short| pad_edit(table, short, &delimiter))
                     .collect(),
                 command: None,
+                dialect_change: None,
                 fixes: shorts
                     .iter()
                     .map(|&short| missing_cells_diag(table, short))
