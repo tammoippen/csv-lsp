@@ -5,6 +5,7 @@
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use csv_lsp::position::{LineIndex, PositionEncoding};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Exit, Initialized,
@@ -12,11 +13,12 @@ use lsp_types::notification::{
 };
 use lsp_types::request::{CodeActionRequest, Initialize, Request as _, Shutdown};
 use lsp_types::{
-    ClientCapabilities, DiagnosticSeverity, DidChangeTextDocumentParams,
-    DidCloseTextDocumentParams, DidOpenTextDocumentParams, GeneralClientCapabilities,
-    InitializeParams, InitializeResult, NumberOrString, OneOf, Position, PositionEncodingKind,
-    PublishDiagnosticsParams, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentItem, TextDocumentSyncCapability, Uri, VersionedTextDocumentIdentifier,
+    ClientCapabilities, CodeAction, CodeActionContext, CodeActionKind, CodeActionOrCommand,
+    CodeActionParams, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, GeneralClientCapabilities, InitializeParams, InitializeResult,
+    NumberOrString, OneOf, Position, PositionEncodingKind, PublishDiagnosticsParams, Range,
+    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem,
+    TextDocumentSyncCapability, TextEdit, Uri, VersionedTextDocumentIdentifier,
 };
 
 const TIMEOUT: Duration = Duration::from_secs(5);
@@ -162,6 +164,133 @@ impl TestClient {
             .expect("server thread panicked")
             .expect("server returned an error");
     }
+}
+
+/// Apply LSP edits client-side (back-to-front so earlier offsets stay
+/// valid), exactly like an editor would.
+fn apply_edits(text: &str, edits: &[TextEdit], enc: PositionEncoding) -> String {
+    let index = LineIndex::new(text);
+    let mut replacements: Vec<(usize, usize, &str)> = edits
+        .iter()
+        .map(|edit| {
+            (
+                index.offset(text, edit.range.start, enc),
+                index.offset(text, edit.range.end, enc),
+                edit.new_text.as_str(),
+            )
+        })
+        .collect();
+    replacements.sort_by_key(|&(start, _, _)| start);
+    let mut result = text.to_owned();
+    for &(start, end, new_text) in replacements.iter().rev() {
+        result.replace_range(start..end, new_text);
+    }
+    result
+}
+
+/// Request code actions at `range`, unwrapping to plain `CodeAction`s.
+fn code_actions(
+    client: &mut TestClient,
+    uri: &Uri,
+    range: Range,
+    only: Option<Vec<CodeActionKind>>,
+) -> Vec<CodeAction> {
+    let params = CodeActionParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        range,
+        context: CodeActionContext {
+            diagnostics: Vec::new(),
+            only,
+            trigger_kind: None,
+        },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    };
+    let response = client.request::<CodeActionRequest>(params);
+    response
+        .unwrap_or_default()
+        .into_iter()
+        .map(|entry| match entry {
+            CodeActionOrCommand::CodeAction(action) => action,
+            CodeActionOrCommand::Command(command) => panic!("unexpected command {command:?}"),
+        })
+        .collect()
+}
+
+/// The edits an action carries for `uri`.
+fn edits_for(action: &CodeAction, uri: &Uri) -> Vec<TextEdit> {
+    action
+        .edit
+        .as_ref()
+        .expect("action carries an edit")
+        .changes
+        .as_ref()
+        .expect("changes map form")
+        .get(uri)
+        .expect("edits for the document")
+        .clone()
+}
+
+fn cursor(line: u32, character: u32) -> Range {
+    let at = Position { line, character };
+    Range { start: at, end: at }
+}
+
+#[test]
+fn pad_quickfix_round_trips_to_clean_diagnostics() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/pad.csv".parse().unwrap();
+    let text = "a,b,c\n1,2\nx\n";
+
+    client.open(&uri, "csv", 1, text);
+    assert_eq!(client.recv_diagnostics().diagnostics.len(), 2);
+
+    // Cursor at the end of the `1,2` row.
+    let actions = code_actions(&mut client, &uri, cursor(1, 3), None);
+    assert_eq!(actions.len(), 2);
+    let quickfix = &actions[0];
+    assert_eq!(quickfix.kind, Some(CodeActionKind::QUICKFIX));
+    assert_eq!(quickfix.is_preferred, Some(true));
+    assert_eq!(quickfix.title, "Pad row with 1 empty cell");
+    assert_eq!(quickfix.diagnostics.as_ref().unwrap().len(), 1);
+
+    // Apply the edit like an editor would, then sync the new text.
+    let text2 = apply_edits(text, &edits_for(quickfix, &uri), PositionEncoding::Utf8);
+    assert_eq!(text2, "a,b,c\n1,2,\nx\n");
+    client.change(&uri, 2, &text2);
+    // Only the `x` row is still short.
+    assert_eq!(client.recv_diagnostics().diagnostics.len(), 1);
+
+    client.shutdown();
+}
+
+#[test]
+fn fix_all_source_action_repairs_the_whole_file() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/fixall.csv".parse().unwrap();
+    let text = "a,b,c\n1,2\nx\n";
+
+    client.open(&uri, "csv", 1, text);
+    client.recv_diagnostics();
+
+    // Cursor in the header, filtered to source.fixAll: only the fix-all.
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE_FIX_ALL]),
+    );
+    assert_eq!(actions.len(), 1);
+    let fix_all = &actions[0];
+    assert_eq!(fix_all.title, "Pad all short rows (2)");
+    assert_eq!(fix_all.kind, Some(CodeActionKind::SOURCE_FIX_ALL));
+
+    let text2 = apply_edits(text, &edits_for(fix_all, &uri), PositionEncoding::Utf8);
+    assert_eq!(text2, "a,b,c\n1,2,\nx,,\n");
+    client.change(&uri, 2, &text2);
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    client.shutdown();
 }
 
 #[test]

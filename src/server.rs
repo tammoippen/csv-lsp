@@ -5,6 +5,7 @@
 //! Handlers are panic-isolated so a bug in one feature answers one request
 //! with an error instead of killing the server.
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
@@ -15,13 +16,15 @@ use lsp_types::notification::{
 };
 use lsp_types::request::{CodeActionRequest, Formatting, Request as _};
 use lsp_types::{
-    Diagnostic, DiagnosticSeverity, InitializeParams, NumberOrString, PublishDiagnosticsParams,
+    CodeAction, CodeActionOrCommand, CodeActionParams, Diagnostic, DiagnosticSeverity,
+    InitializeParams, NumberOrString, PublishDiagnosticsParams, TextEdit, WorkspaceEdit,
 };
 
 use crate::capabilities;
 use crate::document::{Document, Store};
-use crate::features::{Diag, Registry, Severity};
+use crate::features::{Action, ActionContext, Diag, Registry, Severity};
 use crate::log;
+use crate::parse::Span;
 use crate::position::PositionEncoding;
 
 /// Boxed error type used at the server boundary.
@@ -207,12 +210,10 @@ fn handle_request(state: &mut ServerState, request: Request) -> Response {
 }
 
 fn dispatch_request(state: &mut ServerState, request: Request) -> Result<Response, RequestError> {
-    let _ = &state;
     match request.method.as_str() {
         CodeActionRequest::METHOD => {
-            let (id, _params) = cast_request::<CodeActionRequest>(request)?;
-            // Stub until M2: no actions, but the capability is answerable.
-            Ok(Response::new_ok(id, serde_json::json!([])))
+            let (id, params) = cast_request::<CodeActionRequest>(request)?;
+            Ok(Response::new_ok(id, handle_code_action(state, &params)))
         }
         Formatting::METHOD => {
             let (id, _params) = cast_request::<Formatting>(request)?;
@@ -225,6 +226,65 @@ fn dispatch_request(state: &mut ServerState, request: Request) -> Result<Respons
             format!("csv-lsp does not handle `{}`", request.method),
         )),
     }
+}
+
+/// Compute the code actions for the requested range.
+fn handle_code_action(state: &ServerState, params: &CodeActionParams) -> Vec<CodeActionOrCommand> {
+    let Some(doc) = state.store.get(&params.text_document.uri) else {
+        return Vec::new();
+    };
+    let start = doc
+        .line_index
+        .offset(&doc.text, params.range.start, state.encoding);
+    let end = doc
+        .line_index
+        .offset(&doc.text, params.range.end, state.encoding);
+    let ctx = ActionContext {
+        doc,
+        range: Span::new(start.min(end), start.max(end)),
+        client_diagnostics: &params.context.diagnostics,
+        only: params.context.only.as_deref(),
+    };
+    state
+        .registry
+        .actions(&ctx)
+        .into_iter()
+        .map(|action| to_lsp_action(action, doc, state.encoding))
+        .collect()
+}
+
+/// The boundary conversion for actions: spans → ranges, plus one workspace
+/// edit per action targeting this document (`changes` map form — no
+/// executeCommand round trip, broadest client compatibility).
+fn to_lsp_action(
+    action: Action,
+    doc: &Document,
+    encoding: PositionEncoding,
+) -> CodeActionOrCommand {
+    let edits: Vec<TextEdit> = action
+        .edits
+        .into_iter()
+        .map(|(span, new_text)| TextEdit {
+            range: doc.line_index.range(&doc.text, span, encoding),
+            new_text,
+        })
+        .collect();
+    let diagnostics: Vec<Diagnostic> = action
+        .fixes
+        .into_iter()
+        .map(|diag| to_lsp_diagnostic(diag, doc, encoding))
+        .collect();
+    CodeActionOrCommand::CodeAction(CodeAction {
+        title: action.title,
+        kind: Some(action.kind),
+        diagnostics: (!diagnostics.is_empty()).then_some(diagnostics),
+        edit: Some(WorkspaceEdit {
+            changes: Some(HashMap::from([(doc.uri.clone(), edits)])),
+            ..Default::default()
+        }),
+        is_preferred: action.is_preferred.then_some(true),
+        ..Default::default()
+    })
 }
 
 /// Deserialize request params, mapping failures to `InvalidParams`.
