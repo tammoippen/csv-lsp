@@ -30,6 +30,7 @@ impl ActionProvider for ReinterpretDialect {
                 kind: CodeActionKind::SOURCE,
                 edits: Vec::new(),
                 command: Some(ServerCommand::SetDialect { dialect }),
+                dialect_change: None,
                 fixes: Vec::new(),
                 is_preferred: false,
             })

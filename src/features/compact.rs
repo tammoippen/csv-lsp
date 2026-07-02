@@ -38,6 +38,7 @@ impl ActionProvider for CompactColumns {
             kind: CodeActionKind::SOURCE,
             edits,
             command: None,
+            dialect_change: None,
             fixes: Vec::new(),
             is_preferred: false,
         }]
