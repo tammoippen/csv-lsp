@@ -692,6 +692,69 @@ mod tests {
         assert_eq!(table.cell_at(6), Some((0, 1)));
     }
 
+    /// Malformed and adversarial snippets: the parser must stay total.
+    const CORPUS: &[&str] = &[
+        "",
+        "\n",
+        "\r",
+        "\r\n",
+        "\r\r\n",
+        ",",
+        ",,,",
+        "\"",
+        "\"\"",
+        "\"\"\"",
+        "\"\"\"\"",
+        "a\"b\"c",
+        "\"a\"b\"c\"",
+        "\",\n\r",
+        "\"\r\r\n",
+        "\u{feff}",
+        "\u{feff}\"",
+        "  \"x\"  garbage  ,y",
+        "é😀,\"名\n前\",ü\"",
+        "\"😀",
+        "a,b,c,d,e,f,g,h,i,j\n1\n",
+        "x\0y,\0",
+        " , , \n,,\n",
+        "\"a\"\"",
+        "quote\"in\"the\"middle\n\"and\", \"more\" x\n",
+    ];
+
+    #[test]
+    fn the_parser_is_total_over_the_corpus() {
+        for text in CORPUS {
+            for dialect in [Dialect::Csv, Dialect::Tsv, Dialect::Ssv] {
+                let table = parse(text, dialect);
+                for row in &table.rows {
+                    assert_char_boundaries(text, row.span);
+                    assert!(!row.cells.is_empty());
+                    for cell in &row.cells {
+                        assert_char_boundaries(text, cell.span);
+                        assert_char_boundaries(text, cell.content_span);
+                        assert!(row.span.start <= cell.span.start);
+                        assert!(cell.span.end <= row.span.end);
+                        assert!(cell.span.start <= cell.content_span.start);
+                        assert!(cell.content_span.end <= cell.span.end);
+                        let _ = cell.value(text); // decoding must not panic
+                    }
+                }
+                for error in &table.errors {
+                    assert_char_boundaries(text, error.span);
+                    assert!(error.row < table.rows.len(), "error row out of range");
+                }
+            }
+        }
+    }
+
+    fn assert_char_boundaries(text: &str, span: Span) {
+        assert!(span.start <= span.end, "inverted span in {text:?}");
+        assert!(span.end <= text.len(), "span out of bounds in {text:?}");
+        assert!(text.is_char_boundary(span.start), "bad start in {text:?}");
+        assert!(text.is_char_boundary(span.end), "bad end in {text:?}");
+        let _ = span.slice(text); // must not panic
+    }
+
     #[test]
     fn parses_unquoted_cells_with_exact_spans() {
         let text = "a,b,cc\n1,,2\n";
