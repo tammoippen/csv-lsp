@@ -497,6 +497,45 @@ fn quote_column_applies_across_all_rows() {
 }
 
 #[test]
+fn column_edits_round_trip() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/columns.csv".parse().unwrap();
+    let text = "id,name\n1,x\n2,y\n";
+    client.open(&uri, "csv", 1, text);
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    // Add an empty column right of `id`.
+    let only = Some(vec![CodeActionKind::REFACTOR]);
+    let actions = code_actions(&mut client, &uri, cursor(0, 0), only.clone());
+    let add_right = actions
+        .iter()
+        .find(|action| action.title == "Add column right of \"id\"")
+        .expect("add right offered");
+    let with_column = apply_edits(text, &edits_for(add_right, &uri), PositionEncoding::Utf8);
+    assert_eq!(with_column, "id,,name\n1,,x\n2,,y\n");
+    client.change(&uri, 2, &with_column);
+    // The header moved with the rows: still clean.
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    // Delete the new (empty, headerless) column: cursor inside it.
+    let actions = code_actions(&mut client, &uri, cursor(0, 3), only);
+    let delete = actions
+        .iter()
+        .find(|action| action.title == "Delete column #2")
+        .expect("delete offered");
+    let restored = apply_edits(
+        &with_column,
+        &edits_for(delete, &uri),
+        PositionEncoding::Utf8,
+    );
+    assert_eq!(restored, text); // byte-identical round trip
+    client.change(&uri, 3, &restored);
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    client.shutdown();
+}
+
+#[test]
 fn unknown_commands_get_invalid_params() {
     let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
     let response = client.raw_request(
