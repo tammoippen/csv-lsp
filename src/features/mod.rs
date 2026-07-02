@@ -5,6 +5,7 @@
 //! [`Registry::standard`].** Everything works on byte spans over the parsed
 //! [`Table`]; the server converts to LSP types at its boundary only.
 
+pub mod pad_rows;
 pub mod parse_errors;
 pub mod ragged_rows;
 
@@ -126,7 +127,7 @@ impl Registry {
                 Box::new(parse_errors::ParseErrors),
                 Box::new(ragged_rows::RaggedRows),
             ],
-            providers: vec![],
+            providers: vec![Box::new(pad_rows::PadRows)],
         }
     }
 
@@ -148,14 +149,16 @@ impl Registry {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod testutil {
     use super::*;
 
-    fn doc(text: &str) -> Document {
+    /// A CSV document for feature tests.
+    pub(crate) fn doc(text: &str) -> Document {
         Document::new("file:///t.csv".parse().unwrap(), "csv", 1, text.to_owned())
     }
 
-    fn ctx_at(doc: &Document, offset: usize) -> ActionContext<'_> {
+    /// A context with a bare cursor at `offset`.
+    pub(crate) fn ctx_at(doc: &Document, offset: usize) -> ActionContext<'_> {
         ActionContext {
             doc,
             range: Span::new(offset, offset),
@@ -163,6 +166,11 @@ mod tests {
             only: None,
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::testutil::{ctx_at, doc};
 
     #[test]
     fn cursor_resolves_to_cells_through_the_context() {
