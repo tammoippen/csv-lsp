@@ -61,8 +61,13 @@ pub enum QuotePolicy {
     /// and compact are pure whitespace transforms under this policy.
     Preserve,
     /// Re-encode each *decoded* value, quoting only where the target
-    /// dialect requires it (the future dialect transform's policy).
+    /// dialect requires it (normalizes quoting).
     Required,
+    /// Dialect conversion: quoted cells stay verbatim (already protected);
+    /// unquoted cells gain quotes only when their content contains the
+    /// *target* delimiter. Clean unquoted cells can never contain quotes or
+    /// newlines, so this is complete for files without parse errors.
+    PreserveOrRequired,
 }
 
 /// Render the table back to text under `opts`.
@@ -95,6 +100,16 @@ pub fn render(text: &str, table: &Table, opts: &RenderOptions) -> String {
                 QuotePolicy::Preserve => Cow::Borrowed(cell.content_span.slice(text)),
                 QuotePolicy::Required => {
                     Cow::Owned(encode_cell(&cell.value(text), opts.dialect, false))
+                }
+                QuotePolicy::PreserveOrRequired => {
+                    let content = cell.content_span.slice(text);
+                    if cell.quoting == crate::parse::Quoting::Unquoted
+                        && content.contains(delimiter)
+                    {
+                        Cow::Owned(encode_cell(content, opts.dialect, false))
+                    } else {
+                        Cow::Borrowed(content)
+                    }
                 }
             };
             out.push_str(&content);
@@ -306,6 +321,46 @@ mod tests {
             let once = compact(text);
             assert_eq!(compact(&once), once, "compact not idempotent for {text:?}");
         }
+    }
+
+    fn convert(text: &str, from: Dialect, to: Dialect) -> String {
+        let table = parse(text, from);
+        let opts = RenderOptions {
+            dialect: to,
+            quote_policy: QuotePolicy::PreserveOrRequired,
+            ..RenderOptions::compact_for(&table)
+        };
+        render(text, &table, &opts)
+    }
+
+    #[test]
+    fn conversion_keeps_quoted_cells_verbatim() {
+        assert_eq!(
+            convert("\"a,b\",x\n", Dialect::Csv, Dialect::Tsv),
+            "\"a,b\"\tx\n"
+        );
+    }
+
+    #[test]
+    fn conversion_quotes_cells_containing_the_target_delimiter() {
+        // A tab is plain content under CSV but must be protected in TSV.
+        assert_eq!(
+            convert("a\tb,x\n", Dialect::Csv, Dialect::Tsv),
+            "\"a\tb\"\tx\n"
+        );
+        // German decimals: content commas need quoting in CSV.
+        assert_eq!(
+            convert("artikel;preis\nbolzen;1,50\n", Dialect::Ssv, Dialect::Csv),
+            "artikel,preis\nbolzen,\"1,50\"\n"
+        );
+    }
+
+    #[test]
+    fn conversion_leaves_plain_cells_byte_identical() {
+        assert_eq!(
+            convert("a,b\n1,2\n", Dialect::Csv, Dialect::Ssv),
+            "a;b\n1;2\n"
+        );
     }
 
     #[test]

@@ -17,6 +17,15 @@ pub enum Dialect {
 }
 
 impl Dialect {
+    /// Human-readable dialect name for action titles and messages.
+    pub fn name(self) -> &'static str {
+        match self {
+            Dialect::Csv => "CSV",
+            Dialect::Tsv => "TSV",
+            Dialect::Ssv => "SSV",
+        }
+    }
+
     /// The delimiter byte of this dialect.
     pub fn delimiter(self) -> u8 {
         match self {
@@ -85,6 +94,13 @@ impl Dialect {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn names_read_like_users_expect() {
+        assert_eq!(Dialect::Csv.name(), "CSV");
+        assert_eq!(Dialect::Tsv.name(), "TSV");
+        assert_eq!(Dialect::Ssv.name(), "SSV");
+    }
 
     #[test]
     fn delimiters_per_dialect() {
