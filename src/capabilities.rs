@@ -60,6 +60,8 @@ pub fn server_capabilities(enc: PositionEncoding) -> ServerCapabilities {
                 CodeActionKind::QUICKFIX,
                 CodeActionKind::SOURCE,
                 CodeActionKind::SOURCE_FIX_ALL,
+                CodeActionKind::REFACTOR,
+                CodeActionKind::REFACTOR_REWRITE,
             ]),
             // Edits are cheap for CSV: computed eagerly, no lazy resolve.
             resolve_provider: Some(false),
@@ -134,6 +136,8 @@ mod tests {
         assert!(kinds.contains(&CodeActionKind::QUICKFIX));
         assert!(kinds.contains(&CodeActionKind::SOURCE));
         assert!(kinds.contains(&CodeActionKind::SOURCE_FIX_ALL));
+        assert!(kinds.contains(&CodeActionKind::REFACTOR));
+        assert!(kinds.contains(&CodeActionKind::REFACTOR_REWRITE));
         assert_eq!(actions.resolve_provider, Some(false));
     }
 
