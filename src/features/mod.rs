@@ -6,6 +6,7 @@
 //! [`Table`]; the server converts to LSP types at its boundary only.
 
 pub mod parse_errors;
+pub mod ragged_rows;
 
 use crate::parse::{Span, Table};
 
@@ -59,7 +60,10 @@ impl Registry {
     /// The standard feature set — the single registration point.
     pub fn standard() -> Self {
         Registry {
-            rules: vec![Box::new(parse_errors::ParseErrors)],
+            rules: vec![
+                Box::new(parse_errors::ParseErrors),
+                Box::new(ragged_rows::RaggedRows),
+            ],
         }
     }
 
