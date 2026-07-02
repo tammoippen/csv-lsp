@@ -6,11 +6,17 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
-use lsp_types::notification::{Exit, Initialized, Notification as _, PublishDiagnostics};
+use lsp_types::notification::{
+    DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Exit, Initialized,
+    Notification as _, PublishDiagnostics,
+};
 use lsp_types::request::{Initialize, Shutdown};
 use lsp_types::{
-    ClientCapabilities, GeneralClientCapabilities, InitializeParams, InitializeResult, OneOf,
-    PositionEncodingKind, PublishDiagnosticsParams, TextDocumentSyncCapability,
+    ClientCapabilities, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, GeneralClientCapabilities, InitializeParams, InitializeResult,
+    OneOf, PositionEncodingKind, PublishDiagnosticsParams, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier, TextDocumentItem, TextDocumentSyncCapability, Uri,
+    VersionedTextDocumentIdentifier,
 };
 
 const TIMEOUT: Duration = Duration::from_secs(5);
@@ -98,7 +104,6 @@ impl TestClient {
     }
 
     /// Wait for the next `textDocument/publishDiagnostics` notification.
-    #[expect(dead_code, reason = "used from the document-lifecycle cycle on")]
     fn recv_diagnostics(&self) -> PublishDiagnosticsParams {
         loop {
             match self.recv() {
@@ -111,6 +116,39 @@ impl TestClient {
                 other => panic!("expected diagnostics, got {other:?}"),
             }
         }
+    }
+
+    /// Open a document with the given language id, version and text.
+    fn open(&self, uri: &Uri, language_id: &str, version: i32, text: &str) {
+        self.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+            text_document: TextDocumentItem {
+                uri: uri.clone(),
+                language_id: language_id.to_owned(),
+                version,
+                text: text.to_owned(),
+            },
+        });
+    }
+
+    /// Replace a document's text (FULL sync shape).
+    fn change(&self, uri: &Uri, version: i32, text: &str) {
+        self.notify::<DidChangeTextDocument>(DidChangeTextDocumentParams {
+            text_document: VersionedTextDocumentIdentifier {
+                uri: uri.clone(),
+                version,
+            },
+            content_changes: vec![TextDocumentContentChangeEvent {
+                range: None,
+                range_length: None,
+                text: text.to_owned(),
+            }],
+        });
+    }
+
+    fn close(&self, uri: &Uri) {
+        self.notify::<DidCloseTextDocument>(DidCloseTextDocumentParams {
+            text_document: TextDocumentIdentifier { uri: uri.clone() },
+        });
     }
 
     /// Orderly shutdown: request + exit notification + thread join.
@@ -151,6 +189,29 @@ fn initialize_falls_back_to_utf16() {
         result.capabilities.position_encoding,
         Some(PositionEncodingKind::UTF16)
     );
+    client.shutdown();
+}
+
+#[test]
+fn document_lifecycle_publishes_and_clears_diagnostics() {
+    let (client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/data.csv".parse().unwrap();
+
+    client.open(&uri, "csv", 1, "a,b\n1,2\n");
+    let published = client.recv_diagnostics();
+    assert_eq!(published.uri, uri);
+    assert_eq!(published.version, Some(1));
+    assert!(published.diagnostics.is_empty());
+
+    client.change(&uri, 2, "a,b\n1,2\n3,4\n");
+    let published = client.recv_diagnostics();
+    assert_eq!(published.version, Some(2));
+
+    client.close(&uri);
+    let published = client.recv_diagnostics();
+    assert_eq!(published.uri, uri);
+    assert!(published.diagnostics.is_empty());
+
     client.shutdown();
 }
 
