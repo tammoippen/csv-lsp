@@ -34,11 +34,13 @@ with fixes attached.
 - **Convert to CSV/TSV/SSV** — rewrite the text to a different delimiter.
   Quoting adapts automatically (`bolzen;1,50` → `bolzen,"1,50"`), and the
   server keeps parsing under the new dialect after you apply it.
+- **Quote cell / quote column** — wrap the cell under the cursor (or every
+  unquoted cell of its column, header included) in RFC 4180 quotes. Padding
+  stays outside the quotes; already-quoted cells are left alone.
 - Unicode-aware alignment (CJK and accented characters measure by display
   width), BOM/CRLF/final-newline preservation, multi-line quoted cells.
 
-Planned on the same foundation: quoting a cell/column, adding and deleting
-columns.
+Planned on the same foundation: adding and deleting columns.
 
 ## Install
 
@@ -85,8 +87,8 @@ your Helix version ships a built-in `csv` language, keeping `name = "csv"`
 identical makes your entry merge with it. Verify with `hx --health csv`.
 
 Daily driving: diagnostics appear as you type; `space`+`a` opens the code
-actions (pad row, pad all, align, compact, reinterpret, convert);
-`:format` aligns.
+actions (pad row, pad all, align, compact, reinterpret, convert, quote
+cell/column); `:format` aligns.
 
 ## Dialects and conventions
 

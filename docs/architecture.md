@@ -198,11 +198,12 @@ the editor cursor stable and makes formatting idempotent (`[]` when already alig
 
 ## Future features (designed-for, not yet implemented)
 
-- **Quote cell/column** — one provider; per-cell edits via `encode_cell(force_quote)`.
 - **Add column left/right** — one provider; per-row single-delimiter inserts at cell
   boundaries (cell spans give exact offsets).
 - **Delete column** — one provider; per-row deletes of `cell.span` + one adjacent
   delimiter.
+- **Unquote cell/column** — the inverse of the quote actions, only where the
+  value survives unquoted.
 
 ## Performance stance
 
