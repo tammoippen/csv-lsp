@@ -1,5 +1,5 @@
 //! Structural column editing at the cursor: insert an empty column left or
-//! right of the current one (deletion follows in the next cycle).
+//! right of the current one, or delete it across the whole file.
 //!
 //! Edits cover clean rows that *have* the column — blank rows, parse-error
 //! rows and shorter rows are skipped (the latter stay ragged and keep their
@@ -14,7 +14,7 @@ use crate::features::quote::column_title;
 use crate::features::{Action, ActionContext, ActionProvider};
 use crate::parse::{Row, Span, Table};
 
-/// `Add column left/right of …` (and `Delete column …`) at the cursor.
+/// `Add column left/right of …` and `Delete column …` at the cursor.
 pub struct ColumnEdits;
 
 impl ActionProvider for ColumnEdits {
@@ -49,6 +49,9 @@ impl ActionProvider for ColumnEdits {
                 (Span::new(at, at), delimiter.clone())
             })
             .collect();
+        let delete: Vec<(Span, String)> = editable_rows(table, &error_rows, column)
+            .map(|row| (delete_span(row, column), String::new()))
+            .collect();
 
         let action = |title: String, edits: Vec<(Span, String)>| Action {
             title,
@@ -62,7 +65,22 @@ impl ActionProvider for ColumnEdits {
         vec![
             action(format!("Add column left of {title}"), add_left),
             action(format!("Add column right of {title}"), add_right),
+            action(format!("Delete column {title}"), delete),
         ]
+    }
+}
+
+/// The bytes deleting the column removes from a row: the cell plus one
+/// adjacent delimiter — the preceding one for inner columns, the following
+/// one for the first; single-cell rows just lose their content (the row
+/// becomes a blank line).
+fn delete_span(row: &Row, column: usize) -> Span {
+    if column > 0 {
+        Span::new(row.cells[column - 1].span.end, row.cells[column].span.end)
+    } else if row.cells.len() > 1 {
+        Span::new(row.cells[0].span.start, row.cells[1].span.start)
+    } else {
+        row.cells[0].span
     }
 }
 
@@ -154,6 +172,52 @@ mod tests {
         assert_eq!(
             action_applied(text, 1, "Add column right of \"a\"").as_deref(),
             Some("a,,b\n1,,2\n")
+        );
+    }
+
+    #[test]
+    fn deleting_an_inner_column_takes_the_preceding_delimiter() {
+        let text = "a,b,c\n1,2,3\n";
+        assert_eq!(
+            action_applied(text, text.find('b').unwrap(), "Delete column \"b\"").as_deref(),
+            Some("a,c\n1,3\n")
+        );
+    }
+
+    #[test]
+    fn deleting_the_first_column_takes_the_following_delimiter() {
+        let text = "a,b,c\n1,2,3\n";
+        assert_eq!(
+            action_applied(text, 0, "Delete column \"a\"").as_deref(),
+            Some("b,c\n2,3\n")
+        );
+    }
+
+    #[test]
+    fn quoted_cells_are_deleted_wholesale() {
+        let text = "x,\"a,b\"\ny,z\n";
+        let offset = text.find("\"a").unwrap();
+        assert_eq!(
+            action_applied(text, offset, "Delete column \"a,b\"").as_deref(),
+            Some("x\ny\n")
+        );
+    }
+
+    #[test]
+    fn deleting_the_only_column_leaves_blank_lines() {
+        let text = "a\nb\n";
+        assert_eq!(
+            action_applied(text, 0, "Delete column \"a\"").as_deref(),
+            Some("\n\n")
+        );
+    }
+
+    #[test]
+    fn short_rows_keep_their_text_on_delete() {
+        let text = "a,b\n1\n";
+        assert_eq!(
+            action_applied(text, text.find('b').unwrap(), "Delete column \"b\"").as_deref(),
+            Some("a\n1\n")
         );
     }
 }
