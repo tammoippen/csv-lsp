@@ -4,11 +4,135 @@
 //! Rows overlapping a parse error are emitted **verbatim** — the renderer
 //! never reformats what the parser could not fully understand.
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 
 use unicode_width::UnicodeWidthStr;
 
-use crate::parse::Table;
+use crate::dialect::Dialect;
+use crate::parse::{LineTerminator, Table};
+
+/// What [`render`] should produce.
+#[derive(Debug, Clone)]
+pub struct RenderOptions {
+    /// Target delimiter (differs from the table's for dialect transforms).
+    pub dialect: Dialect,
+    /// `Some(column display widths)`: pad cells so delimiters line up.
+    /// `None`: compact, no padding.
+    pub align: Option<Vec<usize>>,
+    /// How cell content is emitted.
+    pub quote_policy: QuotePolicy,
+    /// Row terminator to emit (mixed-terminator files normalize to it).
+    pub line_terminator: LineTerminator,
+    /// Re-emit the BOM the file started with.
+    pub include_bom: bool,
+    /// Reproduce the trailing newline.
+    pub final_newline: bool,
+}
+
+impl RenderOptions {
+    /// Compact rendering preserving the table's dialect, terminator, BOM
+    /// and final newline.
+    pub fn compact_for(table: &Table) -> Self {
+        RenderOptions {
+            dialect: table.dialect,
+            align: None,
+            quote_policy: QuotePolicy::Preserve,
+            line_terminator: table.line_terminator,
+            include_bom: table.has_bom,
+            final_newline: table.ends_with_newline,
+        }
+    }
+
+    /// Aligned rendering with the given column widths, everything else
+    /// preserved.
+    pub fn aligned_for(table: &Table, widths: Vec<usize>) -> Self {
+        RenderOptions {
+            align: Some(widths),
+            ..Self::compact_for(table)
+        }
+    }
+}
+
+/// How cell content leaves the renderer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuotePolicy {
+    /// Emit each cell's content bytes verbatim — maximally lossless; align
+    /// and compact are pure whitespace transforms under this policy.
+    Preserve,
+    /// Re-encode each *decoded* value, quoting only where the target
+    /// dialect requires it (the future dialect transform's policy).
+    Required,
+}
+
+/// Render the table back to text under `opts`.
+pub fn render(text: &str, table: &Table, opts: &RenderOptions) -> String {
+    let mut out = String::with_capacity(text.len() + 16);
+    if opts.include_bom {
+        out.push('\u{feff}');
+    }
+    let terminator = opts.line_terminator.as_str();
+    let delimiter = opts.dialect.delimiter() as char;
+    let error_rows: HashSet<usize> = table.errors.iter().map(|error| error.row).collect();
+
+    for (index, row) in table.rows.iter().enumerate() {
+        if index > 0 {
+            out.push_str(terminator);
+        }
+        if error_rows.contains(&index) {
+            // Never reformat what the parser could not fully understand.
+            out.push_str(row.span.slice(text));
+            continue;
+        }
+        if row.is_blank() {
+            continue; // an empty line
+        }
+        for (column, cell) in row.cells.iter().enumerate() {
+            if column > 0 {
+                out.push(delimiter);
+            }
+            let content: Cow<'_, str> = match opts.quote_policy {
+                QuotePolicy::Preserve => Cow::Borrowed(cell.content_span.slice(text)),
+                QuotePolicy::Required => {
+                    Cow::Owned(encode_cell(&cell.value(text), opts.dialect, false))
+                }
+            };
+            out.push_str(&content);
+            // Pad only when another cell follows: last cells stay unpadded,
+            // so no row ever gains trailing whitespace.
+            if let Some(widths) = &opts.align
+                && column + 1 < row.cells.len()
+            {
+                let width = widths.get(column).copied().unwrap_or(0);
+                let padding = width.saturating_sub(content.width());
+                for _ in 0..padding {
+                    out.push(' ');
+                }
+            }
+        }
+    }
+    if opts.final_newline && !table.rows.is_empty() {
+        out.push_str(terminator);
+    }
+    out
+}
+
+/// RFC 4180-encode a decoded value for `dialect`: quote when it contains
+/// the delimiter, a quote or a line break (or when forced), doubling any
+/// embedded quotes.
+pub fn encode_cell(value: &str, dialect: Dialect, force_quote: bool) -> String {
+    let delimiter = dialect.delimiter() as char;
+    let needs_quotes = force_quote
+        || value.contains(delimiter)
+        || value.contains('"')
+        || value.contains('\n')
+        || value.contains('\r');
+    if needs_quotes {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_owned()
+    }
+}
 
 /// Display width of every column (Unicode width, UAX #11), measured over
 /// the content spans of clean rows. Blank rows and rows with parse errors
@@ -67,5 +191,59 @@ mod tests {
     fn empty_documents_have_no_columns() {
         assert_eq!(widths(""), Vec::<usize>::new());
         assert_eq!(widths("\n\n"), Vec::<usize>::new());
+    }
+
+    fn compact(text: &str) -> String {
+        let table = parse(text, Dialect::Csv);
+        render(text, &table, &RenderOptions::compact_for(&table))
+    }
+
+    #[test]
+    fn compact_strips_padding_around_all_cell_kinds() {
+        assert_eq!(compact(" a , \"q\" ,c \n1,2,3\n"), "a,\"q\",c\n1,2,3\n");
+    }
+
+    #[test]
+    fn compact_keeps_blank_lines_as_separators() {
+        assert_eq!(compact("a,b\n\n1,2\n"), "a,b\n\n1,2\n");
+    }
+
+    #[test]
+    fn compact_passes_error_rows_through_verbatim() {
+        assert_eq!(compact("a,b\n\"x\" z , w\n"), "a,b\n\"x\" z , w\n");
+    }
+
+    #[test]
+    fn compact_preserves_bom_and_crlf() {
+        assert_eq!(compact("\u{feff}a , b\r\n"), "\u{feff}a,b\r\n");
+    }
+
+    #[test]
+    fn compact_preserves_a_missing_final_newline() {
+        assert_eq!(compact("a , b"), "a,b");
+        assert_eq!(compact(""), "");
+    }
+
+    #[test]
+    fn quoted_interiors_are_never_touched() {
+        // Padding *inside* quotes is content, not layout.
+        assert_eq!(compact("\" a , b \",c\n"), "\" a , b \",c\n");
+    }
+
+    #[test]
+    fn encode_cell_quotes_only_when_needed() {
+        assert_eq!(encode_cell("plain", Dialect::Csv, false), "plain");
+        assert_eq!(encode_cell("a,b", Dialect::Csv, false), "\"a,b\"");
+        assert_eq!(encode_cell("a,b", Dialect::Tsv, false), "a,b");
+        assert_eq!(encode_cell("a\tb", Dialect::Tsv, false), "\"a\tb\"");
+        assert_eq!(
+            encode_cell("say \"hi\"", Dialect::Csv, false),
+            "\"say \"\"hi\"\"\""
+        );
+        assert_eq!(
+            encode_cell("two\nlines", Dialect::Csv, false),
+            "\"two\nlines\""
+        );
+        assert_eq!(encode_cell("forced", Dialect::Csv, true), "\"forced\"");
     }
 }
