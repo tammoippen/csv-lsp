@@ -8,6 +8,9 @@
 pub mod parse_errors;
 pub mod ragged_rows;
 
+use lsp_types::CodeActionKind;
+
+use crate::document::Document;
 use crate::parse::{Span, Table};
 
 /// A diagnostic in crate-internal form.
@@ -51,9 +54,68 @@ pub trait DiagnosticRule {
     fn check(&self, text: &str, table: &Table) -> Vec<Diag>;
 }
 
+/// Everything an action provider may consider.
+pub struct ActionContext<'a> {
+    /// The document: text, dialect, parse result, line index.
+    pub doc: &'a Document,
+    /// The requested range as a byte span (zero-width for a bare cursor).
+    pub range: Span,
+    /// The client's diagnostics overlapping the range — response linkage
+    /// only, never an input: providers recompute from the table.
+    pub client_diagnostics: &'a [lsp_types::Diagnostic],
+    /// The client's kind filter; applied centrally by the registry.
+    pub only: Option<&'a [CodeActionKind]>,
+}
+
+impl ActionContext<'_> {
+    /// The `(row, column)` under the cursor (= the range start), following
+    /// [`Table::cell_at`]'s conventions (delimiter → left cell, row end
+    /// inclusive).
+    pub fn cell_at_cursor(&self) -> Option<(usize, usize)> {
+        self.doc.table.cell_at(self.range.start)
+    }
+
+    /// The column under the cursor.
+    pub fn column_at_cursor(&self) -> Option<usize> {
+        self.cell_at_cursor().map(|(_, column)| column)
+    }
+
+    /// Inclusive-touch intersection with the requested range: a zero-width
+    /// cursor sitting exactly at a span's end still counts.
+    pub fn intersects(&self, span: Span) -> bool {
+        span.start <= self.range.end && self.range.start <= span.end
+    }
+}
+
+/// A code action in crate-internal form.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Action {
+    /// Shown verbatim in the editor's picker.
+    pub title: String,
+    /// LSP kind (`quickfix`, `source`, …); drives client-side grouping.
+    pub kind: CodeActionKind,
+    /// Replacements (span → new text): non-overlapping, in document order;
+    /// never empty (a no-op action must simply not be offered).
+    pub edits: Vec<(Span, String)>,
+    /// The diagnostics this action fixes, for editor linkage.
+    pub fixes: Vec<Diag>,
+    /// Marks the editor's default choice.
+    pub is_preferred: bool,
+}
+
+/// A source of code actions.
+pub trait ActionProvider {
+    /// Stable provider name (for logs).
+    fn name(&self) -> &'static str;
+    /// Actions applicable to the context. Applicability is recomputed from
+    /// the parsed table — never from the client's diagnostics.
+    fn actions(&self, ctx: &ActionContext) -> Vec<Action>;
+}
+
 /// All registered features.
 pub struct Registry {
     rules: Vec<Box<dyn DiagnosticRule>>,
+    providers: Vec<Box<dyn ActionProvider>>,
 }
 
 impl Registry {
@@ -64,6 +126,7 @@ impl Registry {
                 Box::new(parse_errors::ParseErrors),
                 Box::new(ragged_rows::RaggedRows),
             ],
+            providers: vec![],
         }
     }
 
@@ -73,5 +136,55 @@ impl Registry {
             .iter()
             .flat_map(|rule| rule.check(text, table))
             .collect()
+    }
+
+    /// All applicable actions, in provider order.
+    pub fn actions(&self, ctx: &ActionContext) -> Vec<Action> {
+        self.providers
+            .iter()
+            .flat_map(|provider| provider.actions(ctx))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn doc(text: &str) -> Document {
+        Document::new("file:///t.csv".parse().unwrap(), "csv", 1, text.to_owned())
+    }
+
+    fn ctx_at(doc: &Document, offset: usize) -> ActionContext<'_> {
+        ActionContext {
+            doc,
+            range: Span::new(offset, offset),
+            client_diagnostics: &[],
+            only: None,
+        }
+    }
+
+    #[test]
+    fn cursor_resolves_to_cells_through_the_context() {
+        let doc = doc("ab,cd\nef,gh\n");
+        assert_eq!(ctx_at(&doc, 4).cell_at_cursor(), Some((0, 1)));
+        assert_eq!(ctx_at(&doc, 2).column_at_cursor(), Some(0)); // on the delimiter
+        assert_eq!(ctx_at(&doc, 5).cell_at_cursor(), Some((0, 1))); // at the row end
+        assert_eq!(ctx_at(&doc, 99).cell_at_cursor(), None);
+    }
+
+    #[test]
+    fn cursor_resolves_inside_multi_line_quoted_cells() {
+        let doc = doc("\"a\nb\",c\n");
+        assert_eq!(ctx_at(&doc, 3).cell_at_cursor(), Some((0, 0)));
+    }
+
+    #[test]
+    fn intersection_counts_touching_spans() {
+        let doc = doc("ab,cd\nef,gh\n");
+        let row0 = doc.table.rows[0].span; // 0..5
+        assert!(ctx_at(&doc, 5).intersects(row0)); // cursor at the row end
+        assert!(ctx_at(&doc, 0).intersects(row0));
+        assert!(!ctx_at(&doc, 6).intersects(row0)); // next row's start
     }
 }
