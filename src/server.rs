@@ -14,11 +14,15 @@ use lsp_types::notification::{
     PublishDiagnostics,
 };
 use lsp_types::request::{CodeActionRequest, Formatting, Request as _};
-use lsp_types::{InitializeParams, PublishDiagnosticsParams};
+use lsp_types::{
+    Diagnostic, DiagnosticSeverity, InitializeParams, NumberOrString, PublishDiagnosticsParams,
+};
 
 use crate::capabilities;
 use crate::document::{Document, Store};
+use crate::features::{Diag, Registry, Severity};
 use crate::log;
+use crate::position::PositionEncoding;
 
 /// Boxed error type used at the server boundary.
 pub type BoxError = Box<dyn Error + Send + Sync>;
@@ -26,6 +30,8 @@ pub type BoxError = Box<dyn Error + Send + Sync>;
 /// Mutable state shared by all handlers.
 struct ServerState {
     store: Store,
+    encoding: PositionEncoding,
+    registry: Registry,
 }
 
 /// A request failure that becomes an LSP error response.
@@ -48,6 +54,8 @@ pub fn run(connection: Connection) -> Result<(), BoxError> {
 
     let mut state = ServerState {
         store: Store::default(),
+        encoding,
+        registry: Registry::standard(),
     };
     for message in &connection.receiver {
         match message {
@@ -81,7 +89,7 @@ fn handle_notification(
                 let doc = state
                     .store
                     .open(item.uri, &item.language_id, item.version, item.text);
-                publish_diagnostics(connection, doc)?;
+                publish_diagnostics(connection, state.encoding, &state.registry, doc)?;
             }
         }
         DidChangeTextDocument::METHOD => {
@@ -96,7 +104,7 @@ fn handle_notification(
                 }
                 let id = params.text_document;
                 if let Some(doc) = state.store.change(&id.uri, id.version, change.text) {
-                    publish_diagnostics(connection, doc)?;
+                    publish_diagnostics(connection, state.encoding, &state.registry, doc)?;
                 }
             }
         }
@@ -120,14 +128,43 @@ fn handle_notification(
     Ok(())
 }
 
-/// Publish the document's diagnostics (empty until the M1 registry lands).
-fn publish_diagnostics(connection: &Connection, doc: &Document) -> Result<(), BoxError> {
+/// Run all diagnostic rules over the document and push the result.
+fn publish_diagnostics(
+    connection: &Connection,
+    encoding: PositionEncoding,
+    registry: &Registry,
+    doc: &Document,
+) -> Result<(), BoxError> {
+    let diagnostics = registry
+        .diagnostics(&doc.text, &doc.table)
+        .into_iter()
+        .map(|diag| to_lsp_diagnostic(diag, doc, encoding))
+        .collect();
     let params = PublishDiagnosticsParams {
         uri: doc.uri.clone(),
-        diagnostics: Vec::new(),
+        diagnostics,
         version: Some(doc.version),
     };
     send_notification::<PublishDiagnostics>(connection, params)
+}
+
+/// The boundary conversion: byte spans → positions in the negotiated
+/// encoding, internal severities → LSP severities.
+fn to_lsp_diagnostic(diag: Diag, doc: &Document, encoding: PositionEncoding) -> Diagnostic {
+    Diagnostic {
+        range: doc.line_index.range(&doc.text, diag.span, encoding),
+        severity: Some(match diag.severity {
+            Severity::Error => DiagnosticSeverity::ERROR,
+            Severity::Warning => DiagnosticSeverity::WARNING,
+            Severity::Info => DiagnosticSeverity::INFORMATION,
+            Severity::Hint => DiagnosticSeverity::HINT,
+        }),
+        code: Some(NumberOrString::String(diag.code.to_owned())),
+        source: Some("csv-lsp".to_owned()),
+        message: diag.message,
+        data: diag.data,
+        ..Default::default()
+    }
 }
 
 fn send_notification<N: lsp_types::notification::Notification>(

@@ -12,11 +12,11 @@ use lsp_types::notification::{
 };
 use lsp_types::request::{Initialize, Shutdown};
 use lsp_types::{
-    ClientCapabilities, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, GeneralClientCapabilities, InitializeParams, InitializeResult,
-    OneOf, PositionEncodingKind, PublishDiagnosticsParams, TextDocumentContentChangeEvent,
-    TextDocumentIdentifier, TextDocumentItem, TextDocumentSyncCapability, Uri,
-    VersionedTextDocumentIdentifier,
+    ClientCapabilities, DiagnosticSeverity, DidChangeTextDocumentParams,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, GeneralClientCapabilities,
+    InitializeParams, InitializeResult, NumberOrString, OneOf, Position, PositionEncodingKind,
+    PublishDiagnosticsParams, TextDocumentContentChangeEvent, TextDocumentIdentifier,
+    TextDocumentItem, TextDocumentSyncCapability, Uri, VersionedTextDocumentIdentifier,
 };
 
 const TIMEOUT: Duration = Duration::from_secs(5);
@@ -211,6 +211,45 @@ fn document_lifecycle_publishes_and_clears_diagnostics() {
     let published = client.recv_diagnostics();
     assert_eq!(published.uri, uri);
     assert!(published.diagnostics.is_empty());
+
+    client.shutdown();
+}
+
+#[test]
+fn ragged_and_quoting_diagnostics_flow_to_the_client() {
+    let (client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/ragged.csv".parse().unwrap();
+
+    client.open(&uri, "csv", 1, "a,b,c\n1,2\n");
+    let published = client.recv_diagnostics();
+    assert_eq!(published.diagnostics.len(), 1);
+    let diag = &published.diagnostics[0];
+    assert_eq!(
+        diag.code,
+        Some(NumberOrString::String("row-missing-cells".into()))
+    );
+    assert_eq!(diag.severity, Some(DiagnosticSeverity::ERROR));
+    assert_eq!(diag.source.as_deref(), Some("csv-lsp"));
+    // Zero-width range at the end of line 1 ("1,2" → character 3).
+    let expected = Position {
+        line: 1,
+        character: 3,
+    };
+    assert_eq!(diag.range.start, expected);
+    assert_eq!(diag.range.end, expected);
+
+    // Fixing the row clears the squiggle.
+    client.change(&uri, 2, "a,b,c\n1,2,3\n");
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    // Quoting errors arrive with their own code.
+    client.change(&uri, 3, "a,b,c\n\"x,y\n");
+    let published = client.recv_diagnostics();
+    assert_eq!(published.diagnostics.len(), 1);
+    assert_eq!(
+        published.diagnostics[0].code,
+        Some(NumberOrString::String("unclosed-quote".into()))
+    );
 
     client.shutdown();
 }
