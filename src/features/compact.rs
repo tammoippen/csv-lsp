@@ -37,6 +37,7 @@ impl ActionProvider for CompactColumns {
             title: "Compact columns".to_owned(),
             kind: CodeActionKind::SOURCE,
             edits,
+            command: None,
             fixes: Vec::new(),
             is_preferred: false,
         }]

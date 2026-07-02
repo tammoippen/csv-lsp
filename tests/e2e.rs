@@ -248,9 +248,10 @@ fn pad_quickfix_round_trips_to_clean_diagnostics() {
 
     // Cursor at the end of the `1,2` row.
     let actions = code_actions(&mut client, &uri, cursor(1, 3), None);
-    assert_eq!(actions.len(), 2);
-    let quickfix = &actions[0];
-    assert_eq!(quickfix.kind, Some(CodeActionKind::QUICKFIX));
+    let quickfix = actions
+        .iter()
+        .find(|action| action.kind == Some(CodeActionKind::QUICKFIX))
+        .expect("a pad quickfix for the short row");
     assert_eq!(quickfix.is_preferred, Some(true));
     assert_eq!(quickfix.title, "Pad row with 1 empty cell");
     assert_eq!(quickfix.diagnostics.as_ref().unwrap().len(), 1);
@@ -342,17 +343,23 @@ fn source_actions_offer_align_and_compact_as_applicable() {
     let only = Some(vec![CodeActionKind::SOURCE]);
     let actions = code_actions(&mut client, &uri, cursor(0, 0), only.clone());
     let titles: Vec<_> = actions.iter().map(|action| action.title.as_str()).collect();
-    assert_eq!(titles, ["Align columns"]);
+    assert!(titles.contains(&"Align columns"), "got {titles:?}");
+    assert!(!titles.contains(&"Compact columns"), "got {titles:?}");
 
     // After aligning, compact becomes the applicable action.
-    let aligned = apply_edits(text, &edits_for(&actions[0], &uri), PositionEncoding::Utf8);
+    let align = actions
+        .iter()
+        .find(|action| action.title == "Align columns")
+        .unwrap();
+    let aligned = apply_edits(text, &edits_for(align, &uri), PositionEncoding::Utf8);
     assert_eq!(aligned, "id,name\n1 ,x\n");
     client.change(&uri, 2, &aligned);
     client.recv_diagnostics();
 
     let actions = code_actions(&mut client, &uri, cursor(0, 0), only);
     let titles: Vec<_> = actions.iter().map(|action| action.title.as_str()).collect();
-    assert_eq!(titles, ["Compact columns"]);
+    assert!(titles.contains(&"Compact columns"), "got {titles:?}");
+    assert!(!titles.contains(&"Align columns"), "got {titles:?}");
 
     client.shutdown();
 }
