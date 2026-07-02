@@ -5,12 +5,17 @@
 //! replace them milestone by milestone.
 
 use lsp_types::{
-    ClientCapabilities, CodeActionKind, CodeActionOptions, CodeActionProviderCapability, OneOf,
-    PositionEncodingKind, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions,
+    ClientCapabilities, CodeActionKind, CodeActionOptions, CodeActionProviderCapability,
+    ExecuteCommandOptions, OneOf, PositionEncodingKind, ServerCapabilities,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
 };
 
 use crate::position::PositionEncoding;
+
+/// The one command the server executes on itself: re-parse a document under
+/// a different dialect (`arguments: [uri, "csv"|"tsv"|"ssv"]`). Carried by
+/// the `Reinterpret as …` code actions.
+pub const SET_DIALECT_COMMAND: &str = "csv-lsp.setDialect";
 
 /// Pick the position encoding from the client's offer: prefer `utf-8` (our
 /// offsets are bytes already), then `utf-32`, falling back to the protocol's
@@ -61,6 +66,10 @@ pub fn server_capabilities(enc: PositionEncoding) -> ServerCapabilities {
             ..Default::default()
         })),
         document_formatting_provider: Some(OneOf::Left(true)),
+        execute_command_provider: Some(ExecuteCommandOptions {
+            commands: vec![SET_DIALECT_COMMAND.to_owned()],
+            ..Default::default()
+        }),
         ..Default::default()
     }
 }
@@ -126,5 +135,12 @@ mod tests {
         assert!(kinds.contains(&CodeActionKind::SOURCE));
         assert!(kinds.contains(&CodeActionKind::SOURCE_FIX_ALL));
         assert_eq!(actions.resolve_provider, Some(false));
+    }
+
+    #[test]
+    fn the_set_dialect_command_is_advertised() {
+        let caps = server_capabilities(PositionEncoding::Utf8);
+        let commands = caps.execute_command_provider.unwrap().commands;
+        assert_eq!(commands, [SET_DIALECT_COMMAND]);
     }
 }
