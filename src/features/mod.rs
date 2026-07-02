@@ -5,6 +5,8 @@
 //! [`Registry::standard`].** Everything works on byte spans over the parsed
 //! [`Table`]; the server converts to LSP types at its boundary only.
 
+pub mod align;
+pub mod compact;
 pub mod pad_rows;
 pub mod parse_errors;
 pub mod ragged_rows;
@@ -127,7 +129,11 @@ impl Registry {
                 Box::new(parse_errors::ParseErrors),
                 Box::new(ragged_rows::RaggedRows),
             ],
-            providers: vec![Box::new(pad_rows::PadRows)],
+            providers: vec![
+                Box::new(pad_rows::PadRows),
+                Box::new(align::AlignColumns),
+                Box::new(compact::CompactColumns),
+            ],
         }
     }
 
