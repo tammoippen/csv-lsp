@@ -1,0 +1,159 @@
+//! Structural column editing at the cursor: insert an empty column left or
+//! right of the current one (deletion follows in the next cycle).
+//!
+//! Edits cover clean rows that *have* the column — blank rows, parse-error
+//! rows and shorter rows are skipped (the latter stay ragged and keep their
+//! pad quickfix). Because the header row is edited too, the column contract
+//! shifts coherently: clean files stay clean.
+
+use std::collections::HashSet;
+
+use lsp_types::CodeActionKind;
+
+use crate::features::quote::column_title;
+use crate::features::{Action, ActionContext, ActionProvider};
+use crate::parse::{Row, Span, Table};
+
+/// `Add column left/right of …` (and `Delete column …`) at the cursor.
+pub struct ColumnEdits;
+
+impl ActionProvider for ColumnEdits {
+    fn name(&self) -> &'static str {
+        "column-edits"
+    }
+
+    fn actions(&self, ctx: &ActionContext) -> Vec<Action> {
+        let table = &ctx.doc.table;
+        let Some(column) = ctx.column_at_cursor() else {
+            return Vec::new();
+        };
+        let delimiter = (table.dialect.delimiter() as char).to_string();
+        let title = column_title(&ctx.doc.text, table, column);
+        let error_rows: HashSet<usize> = table.errors.iter().map(|error| error.row).collect();
+
+        // One delimiter at a cell boundary = one new empty cell: before any
+        // leading padding (left) or after any trailing padding (right).
+        let add_left: Vec<(Span, String)> = editable_rows(table, &error_rows, column)
+            .map(|row| {
+                let at = row.cells[column].span.start;
+                (Span::new(at, at), delimiter.clone())
+            })
+            .collect();
+        if add_left.is_empty() {
+            // No clean row actually has this column.
+            return Vec::new();
+        }
+        let add_right: Vec<(Span, String)> = editable_rows(table, &error_rows, column)
+            .map(|row| {
+                let at = row.cells[column].span.end;
+                (Span::new(at, at), delimiter.clone())
+            })
+            .collect();
+
+        let action = |title: String, edits: Vec<(Span, String)>| Action {
+            title,
+            kind: CodeActionKind::REFACTOR,
+            edits,
+            command: None,
+            dialect_change: None,
+            fixes: Vec::new(),
+            is_preferred: false,
+        };
+        vec![
+            action(format!("Add column left of {title}"), add_left),
+            action(format!("Add column right of {title}"), add_right),
+        ]
+    }
+}
+
+/// Clean rows that have the column, in document order.
+fn editable_rows<'t>(
+    table: &'t Table,
+    error_rows: &'t HashSet<usize>,
+    column: usize,
+) -> impl Iterator<Item = &'t Row> {
+    table
+        .rows
+        .iter()
+        .enumerate()
+        .filter_map(move |(index, row)| {
+            (!row.is_blank() && !error_rows.contains(&index) && row.cells.len() > column)
+                .then_some(row)
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::edits::apply;
+    use crate::features::testutil::{ctx_at, doc};
+
+    fn action_applied(text: &str, offset: usize, title: &str) -> Option<String> {
+        let doc = doc(text);
+        let actions = ColumnEdits.actions(&ctx_at(&doc, offset));
+        let action = actions.iter().find(|action| action.title == title)?;
+        assert_eq!(action.kind, CodeActionKind::REFACTOR);
+        Some(apply(&doc.text, &action.edits))
+    }
+
+    #[test]
+    fn adds_an_empty_column_on_both_sides() {
+        let text = "a,b\n1,2\n";
+        let at_b = text.find('b').unwrap();
+        assert_eq!(
+            action_applied(text, at_b, "Add column left of \"b\"").as_deref(),
+            Some("a,,b\n1,,2\n")
+        );
+        assert_eq!(
+            action_applied(text, at_b, "Add column right of \"b\"").as_deref(),
+            Some("a,b,\n1,2,\n")
+        );
+    }
+
+    #[test]
+    fn the_first_column_works_on_both_sides() {
+        let text = "a,b\n1,2\n";
+        assert_eq!(
+            action_applied(text, 0, "Add column left of \"a\"").as_deref(),
+            Some(",a,b\n,1,2\n")
+        );
+        assert_eq!(
+            action_applied(text, 0, "Add column right of \"a\"").as_deref(),
+            Some("a,,b\n1,,2\n")
+        );
+    }
+
+    #[test]
+    fn insertion_respects_alignment_padding() {
+        let text = "aa, b \ncc, d \n";
+        let offset = text.find(" b ").unwrap() + 1;
+        assert_eq!(
+            action_applied(text, offset, "Add column left of \"b\"").as_deref(),
+            Some("aa,, b \ncc,, d \n")
+        );
+        assert_eq!(
+            action_applied(text, offset, "Add column right of \"b\"").as_deref(),
+            Some("aa, b ,\ncc, d ,\n")
+        );
+    }
+
+    #[test]
+    fn short_blank_and_error_rows_are_untouched() {
+        let text = "a,b\n\n1,2\nx\n5\" z,w\n";
+        let at_b = text.find('b').unwrap();
+        assert_eq!(
+            action_applied(text, at_b, "Add column left of \"b\"").as_deref(),
+            Some("a,,b\n\n1,,2\nx\n5\" z,w\n")
+        );
+    }
+
+    #[test]
+    fn a_cursor_on_the_delimiter_edits_the_left_cell() {
+        let text = "a,b\n1,2\n";
+        // Offset 1 is the comma: column 0.
+        assert_eq!(
+            action_applied(text, 1, "Add column right of \"a\"").as_deref(),
+            Some("a,,b\n1,,2\n")
+        );
+    }
+}
