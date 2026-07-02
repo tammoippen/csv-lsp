@@ -237,21 +237,33 @@ impl Parser<'_> {
     /// delimiter follows.
     fn cell(&mut self) -> (Cell, CellEnd) {
         let span_start = self.pos;
+        // CellStart: consume leading padding.
+        while self.bytes.get(self.pos) == Some(&b' ') {
+            self.pos += 1;
+        }
         let content_start = self.pos;
         let mut content_end = self.pos;
         let end = loop {
             match self.bytes.get(self.pos) {
                 None | Some(b'\n') => break CellEnd::RowEnd,
                 Some(&b) if b == self.delimiter => break CellEnd::Delimiter,
+                Some(b' ') => self.pos += 1, // padding, unless content follows
                 Some(_) => {
                     self.pos += 1;
                     content_end = self.pos;
                 }
             }
         };
+        let content_span = if content_end > content_start {
+            Span::new(content_start, content_end)
+        } else {
+            // All padding: zero-width content at the span *start* — the
+            // spaces count as trailing padding (left-aligned columns).
+            Span::new(span_start, span_start)
+        };
         let cell = Cell {
             span: Span::new(span_start, self.pos),
-            content_span: Span::new(content_start, content_end),
+            content_span,
             quoting: Quoting::Unquoted,
             has_escaped_quotes: false,
         };
@@ -300,6 +312,45 @@ mod tests {
             .iter()
             .map(|row| row.cells.iter().map(|cell| cell.span.slice(text)).collect())
             .collect()
+    }
+
+    /// Slices of every cell's content span, per row.
+    fn content_slices<'t>(text: &'t str, table: &Table) -> Vec<Vec<&'t str>> {
+        table
+            .rows
+            .iter()
+            .map(|row| {
+                row.cells
+                    .iter()
+                    .map(|cell| cell.content_span.slice(text))
+                    .collect()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn padding_is_trimmed_from_content_spans() {
+        let text = " a , bb ,c \n";
+        let table = parse(text, Dialect::Csv);
+        assert_eq!(cell_slices(text, &table), [[" a ", " bb ", "c "]]);
+        assert_eq!(content_slices(text, &table), [["a", "bb", "c"]]);
+    }
+
+    #[test]
+    fn interior_spaces_are_content() {
+        let text = "a b,c\n";
+        let table = parse(text, Dialect::Csv);
+        assert_eq!(content_slices(text, &table), [["a b", "c"]]);
+    }
+
+    #[test]
+    fn all_padding_cell_has_zero_width_content_at_its_start() {
+        let text = "x,  ,y\n";
+        let table = parse(text, Dialect::Csv);
+        let padded = &table.rows[0].cells[1];
+        assert_eq!(padded.span.slice(text), "  ");
+        assert!(padded.content_span.is_empty());
+        assert_eq!(padded.content_span.start, padded.span.start);
     }
 
     #[test]
