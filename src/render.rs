@@ -230,6 +230,84 @@ mod tests {
         assert_eq!(compact("\" a , b \",c\n"), "\" a , b \",c\n");
     }
 
+    fn align(text: &str) -> String {
+        let table = parse(text, Dialect::Csv);
+        let widths = column_widths(text, &table);
+        render(text, &table, &RenderOptions::aligned_for(&table, widths))
+    }
+
+    #[test]
+    fn align_pads_delimiters_into_columns() {
+        assert_eq!(
+            align("id,name,qty\n1,\"a,b\",3\n20,x,400\n"),
+            "id,name ,qty\n1 ,\"a,b\",3\n20,x    ,400\n"
+        );
+    }
+
+    #[test]
+    fn align_pads_by_display_width() {
+        assert_eq!(align("a,héllo,x\nbb,名前,y\n"), "a ,héllo,x\nbb,名前 ,y\n");
+    }
+
+    #[test]
+    fn align_never_pads_a_rows_last_cell() {
+        // Short row: its last cell has cells following in *other* rows but
+        // none in its own — no trailing spaces anywhere.
+        assert_eq!(align("aaa,b,c\n1\n"), "aaa,b,c\n1\n");
+    }
+
+    #[test]
+    fn align_skips_blank_and_error_rows() {
+        assert_eq!(
+            align("aaa,b\n\n1,2\n\"x y,z\n"),
+            "aaa,b\n\n1  ,2\n\"x y,z\n"
+        );
+    }
+
+    /// Inputs exercising every renderer path, used for the round-trip
+    /// properties below.
+    const WILD: &[&str] = &[
+        "",
+        "\n",
+        "a",
+        "a,b\r\n1,2\r\n",
+        " a , b \n1,\"q\" ,2\n",
+        "\u{feff}x;y\n",
+        "id,name,qty\n1,\"a,b\",3\n20,x,400\n",
+        "a,héllo\nbb,名前\n",
+        "h1,h2\n\n\"multi\nline\",2\n",
+        "broken \"row,1\nclean,2\n",
+        "\"unclosed,to eof",
+        " , ,\n,,\n",
+    ];
+
+    #[test]
+    fn align_is_idempotent() {
+        for text in WILD {
+            let once = align(text);
+            assert_eq!(align(&once), once, "align not idempotent for {text:?}");
+        }
+    }
+
+    #[test]
+    fn compact_undoes_align() {
+        for text in WILD {
+            assert_eq!(
+                compact(&align(text)),
+                compact(text),
+                "compact(align) != compact for {text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn compact_is_idempotent() {
+        for text in WILD {
+            let once = compact(text);
+            assert_eq!(compact(&once), once, "compact not idempotent for {text:?}");
+        }
+    }
+
     #[test]
     fn encode_cell_quotes_only_when_needed() {
         assert_eq!(encode_cell("plain", Dialect::Csv, false), "plain");
