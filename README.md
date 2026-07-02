@@ -27,11 +27,18 @@ with fixes attached.
 
 - **Compact columns** — strip that padding again (`Compact columns` source
   action). Align ⇄ compact round-trips byte-for-byte.
+- **Reinterpret as CSV/TSV/SSV** — for files whose extension lies (a `.csv`
+  that is actually semicolon-separated): switches how the server *parses*
+  the file, zero text changes. Session-scoped; the durable fixes are
+  renaming the file or converting it.
+- **Convert to CSV/TSV/SSV** — rewrite the text to a different delimiter.
+  Quoting adapts automatically (`bolzen;1,50` → `bolzen,"1,50"`), and the
+  server keeps parsing under the new dialect after you apply it.
 - Unicode-aware alignment (CJK and accented characters measure by display
   width), BOM/CRLF/final-newline preservation, multi-line quoted cells.
 
-Planned on the same foundation: csv⇄tsv⇄ssv conversion, quoting a
-cell/column, adding and deleting columns.
+Planned on the same foundation: quoting a cell/column, adding and deleting
+columns.
 
 ## Install
 
@@ -78,7 +85,8 @@ your Helix version ships a built-in `csv` language, keeping `name = "csv"`
 identical makes your entry merge with it. Verify with `hx --health csv`.
 
 Daily driving: diagnostics appear as you type; `space`+`a` opens the code
-actions (pad row, pad all, align, compact); `:format` aligns.
+actions (pad row, pad all, align, compact, reinterpret, convert);
+`:format` aligns.
 
 ## Dialects and conventions
 
@@ -91,6 +99,12 @@ actions (pad row, pad all, align, compact); `:format` aligns.
 - Dialect detection order: LSP `languageId` → file extension → content
   sniffing (delimiters counted outside quotes in the first non-blank line,
   ties favor comma) → comma. The dialect is fixed when a file is opened.
+- **Reinterpretation** (`Reinterpret as …`) overrides that detection for the
+  current session only — on reopen the extension wins again. Rename the file
+  (or convert its content) for a durable fix.
+- **Conversion** (`Convert to …`) rewrites in place and emits the compact
+  form (re-align afterwards if you like). It is only offered on files
+  without quoting errors, and renaming the file afterwards is up to you.
 - **The header is the first non-blank row**; its cell count is the column
   contract the rest of the file is checked against.
 - Blank lines are separators: legal, never padded, never counted.
