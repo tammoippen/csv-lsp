@@ -5,6 +5,8 @@
 //! and from LSP `(line, character)` positions, honoring the position encoding
 //! negotiated with the client (see `docs/plan/m0-scaffold.md`).
 
+use crate::parse::Span;
+
 /// The character-counting unit negotiated with the client during
 /// `initialize`.
 ///
@@ -113,6 +115,14 @@ impl LineIndex {
             remaining -= width;
         }
         content_end
+    }
+
+    /// Convert a byte span into an LSP range.
+    pub fn range(&self, text: &str, span: Span, enc: PositionEncoding) -> lsp_types::Range {
+        lsp_types::Range {
+            start: self.position(text, span.start, enc),
+            end: self.position(text, span.end, enc),
+        }
     }
 
     /// End of a line's content: the offset of its terminator, or `text.len()`
@@ -255,5 +265,14 @@ mod tests {
         // Character 1 lands between the surrogate halves of 😀 (units 0..2).
         assert_eq!(index.offset(text, pos(0, 1), PositionEncoding::Utf16), 0);
         assert_eq!(index.offset(text, pos(0, 2), PositionEncoding::Utf16), 4);
+    }
+
+    #[test]
+    fn range_converts_both_span_ends() {
+        let index = LineIndex::new(MIXED);
+        let span = Span::new(3, 7); // `x\né` → starts on line 0, ends on line 1
+        let range = index.range(MIXED, span, PositionEncoding::Utf16);
+        assert_eq!(range.start, pos(0, 3));
+        assert_eq!(range.end, pos(1, 1));
     }
 }
