@@ -77,9 +77,20 @@ impl Store {
     }
 
     /// Apply a FULL-sync change. Returns `None` for unknown documents
-    /// (a client protocol error we tolerate).
-    pub fn change(&mut self, uri: &Uri, version: i32, text: String) -> Option<&Document> {
+    /// (a client protocol error we tolerate). `dialect_override` is set
+    /// when the change is a dialect conversion the server offered — the
+    /// document re-parses under the new dialect.
+    pub fn change(
+        &mut self,
+        uri: &Uri,
+        version: i32,
+        text: String,
+        dialect_override: Option<Dialect>,
+    ) -> Option<&Document> {
         let doc = self.docs.get_mut(uri.as_str())?;
+        if let Some(dialect) = dialect_override {
+            doc.dialect = dialect;
+        }
         doc.update(version, text);
         Some(doc)
     }
@@ -143,7 +154,7 @@ mod tests {
         store.open(u.clone(), "csv", 1, "a,b\n".into());
         assert_eq!(store.get(&u).unwrap().version, 1);
 
-        let doc = store.change(&u, 2, "a,b,c\n".into()).unwrap();
+        let doc = store.change(&u, 2, "a,b,c\n".into(), None).unwrap();
         assert_eq!(doc.version, 2);
         assert_eq!(doc.text, "a,b,c\n");
 
@@ -156,11 +167,23 @@ mod tests {
         let mut store = Store::default();
         let u = uri("file:///d/x.csv");
         store.open(u.clone(), "csv", 1, "ab\n".into());
-        let doc = store.change(&u, 2, "a\nb\n".into()).unwrap();
+        let doc = store.change(&u, 2, "a\nb\n".into(), None).unwrap();
         let pos = doc
             .line_index
             .position(&doc.text, 2, crate::position::PositionEncoding::Utf8);
         assert_eq!(pos.line, 1);
+    }
+
+    #[test]
+    fn change_with_override_flips_the_dialect() {
+        let mut store = Store::default();
+        let u = uri("file:///d/x.csv");
+        store.open(u.clone(), "csv", 1, "a,b\n".into());
+        let doc = store
+            .change(&u, 2, "a\tb\n".into(), Some(Dialect::Tsv))
+            .unwrap();
+        assert_eq!(doc.dialect, Dialect::Tsv);
+        assert_eq!(doc.table.rows[0].cells.len(), 2);
     }
 
     #[test]
@@ -187,7 +210,7 @@ mod tests {
         let mut store = Store::default();
         assert!(
             store
-                .change(&uri("file:///nope.csv"), 2, String::new())
+                .change(&uri("file:///nope.csv"), 2, String::new(), None)
                 .is_none()
         );
     }

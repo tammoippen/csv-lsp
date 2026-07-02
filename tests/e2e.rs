@@ -306,6 +306,149 @@ fn reinterpret_fixes_a_mislabeled_semicolon_file() {
 }
 
 #[test]
+fn applying_a_conversion_flips_the_dialect() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/convert.csv".parse().unwrap();
+    let text = "a,b,c\n1,2\n"; // one short row
+    client.open(&uri, "csv", 1, text);
+    assert_eq!(client.recv_diagnostics().diagnostics.len(), 1);
+
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    let to_tsv = actions
+        .iter()
+        .find(|action| action.title == "Convert to TSV")
+        .expect("tsv conversion offered");
+    let converted = apply_edits(text, &edits_for(to_tsv, &uri), PositionEncoding::Utf8);
+    assert_eq!(converted, "a\tb\tc\n1\t2\n");
+
+    client.change(&uri, 2, &converted);
+    // Same single diagnostic — no error explosion from a stale dialect.
+    let published = client.recv_diagnostics();
+    assert_eq!(published.diagnostics.len(), 1);
+    assert_eq!(
+        published.diagnostics[0].code,
+        Some(NumberOrString::String("row-missing-cells".into()))
+    );
+
+    // The way back is offered: the dialect flipped to TSV.
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|action| action.title == "Convert to CSV")
+    );
+
+    client.shutdown();
+}
+
+#[test]
+fn manual_changes_do_not_flip_the_dialect() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/manual.csv".parse().unwrap();
+    client.open(&uri, "csv", 1, "a,b\n1,2\n");
+    client.recv_diagnostics();
+
+    // Conversions get offered (and recorded)…
+    code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    // …but the user types something else instead.
+    client.change(&uri, 2, "a,b\n1,2\n3,4\n");
+    client.recv_diagnostics();
+
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|action| action.title == "Convert to TSV")
+    );
+    assert!(
+        !actions
+            .iter()
+            .any(|action| action.title == "Convert to CSV")
+    );
+
+    client.shutdown();
+}
+
+#[test]
+fn reinterpret_then_convert_repairs_a_mislabeled_file() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/preise.csv".parse().unwrap();
+    let text = "artikel;preis\nbolzen;1,50\n";
+    client.open(&uri, "csv", 1, text);
+    client.recv_diagnostics();
+
+    // Step 1: reinterpret as SSV — diagnostics become the sane view.
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    let command = actions
+        .iter()
+        .find(|action| action.title == "Reinterpret as SSV")
+        .and_then(|action| action.command.clone())
+        .expect("reinterpret command");
+    let _: Option<serde_json::Value> = client.request::<ExecuteCommand>(ExecuteCommandParams {
+        command: command.command,
+        arguments: command.arguments.unwrap_or_default(),
+        work_done_progress_params: Default::default(),
+    });
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    // Step 2: convert to CSV so the content matches the extension again.
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    let to_csv = actions
+        .iter()
+        .find(|action| action.title == "Convert to CSV")
+        .expect("csv conversion offered");
+    let converted = apply_edits(text, &edits_for(to_csv, &uri), PositionEncoding::Utf8);
+    assert_eq!(converted, "artikel,preis\nbolzen,\"1,50\"\n");
+    client.change(&uri, 2, &converted);
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    // The document is genuinely CSV now.
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|action| action.title == "Convert to SSV")
+    );
+
+    client.shutdown();
+}
+
+#[test]
 fn unknown_commands_get_invalid_params() {
     let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
     let response = client.raw_request(
