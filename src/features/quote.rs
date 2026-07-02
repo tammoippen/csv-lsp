@@ -1,5 +1,5 @@
-//! Quote a cell (and, next cycle, a whole column): wrap unquoted cells in
-//! RFC 4180 quotes via `encode_cell(force_quote: true)`.
+//! Quote a cell or a whole column: wrap unquoted cells in RFC 4180 quotes
+//! via `encode_cell(force_quote: true)`.
 //!
 //! Only `Unquoted` cells on clean rows qualify — blank rows have nothing to
 //! quote, parse-error rows are never rewritten, and already-quoted cells
@@ -42,7 +42,48 @@ impl ActionProvider for QuoteCells {
                 is_preferred: false,
             });
         }
+
+        // Quote column: every quotable cell of the cursor's column, header
+        // included, in row order (keeps the edits non-overlapping).
+        let edits: Vec<(Span, String)> = (0..table.rows.len())
+            .filter(|&candidate| quotable(table, &error_rows, candidate, column))
+            .map(|candidate| quote_edit(ctx.doc, candidate, column))
+            .collect();
+        if !edits.is_empty() {
+            actions.push(Action {
+                title: format!(
+                    "Quote column {}",
+                    column_title(&ctx.doc.text, table, column)
+                ),
+                kind: CodeActionKind::REFACTOR_REWRITE,
+                edits,
+                command: None,
+                dialect_change: None,
+                fixes: Vec::new(),
+                is_preferred: false,
+            });
+        }
         actions
+    }
+}
+
+/// `"header"` (truncated for the picker) or `#N` (1-based, as users count)
+/// when the header lacks the column — shared with the column-edit actions.
+pub fn column_title(text: &str, table: &Table, column: usize) -> String {
+    const MAX_CHARS: usize = 24;
+    let header_value = table
+        .header()
+        .and_then(|header| header.cells.get(column))
+        .map(|cell| cell.value(text));
+    match header_value {
+        Some(value) if !value.is_empty() => {
+            let mut name: String = value.chars().take(MAX_CHARS).collect();
+            if value.chars().count() > MAX_CHARS {
+                name.push('…');
+            }
+            format!("\"{name}\"")
+        }
+        _ => format!("#{}", column + 1),
     }
 }
 
@@ -113,5 +154,46 @@ mod tests {
         assert_eq!(quote_cell_at("a,b\n\n1,2\n", "a,b\n".len()), None); // blank row
         let text = "a,b\n5\" bolt,x\n";
         assert_eq!(quote_cell_at(text, text.find("bolt").unwrap()), None);
+    }
+
+    fn quote_column_at(text: &str, offset: usize) -> Option<(String, String)> {
+        let doc = doc(text);
+        let actions = QuoteCells.actions(&ctx_at(&doc, offset));
+        let action = actions
+            .iter()
+            .find(|action| action.title.starts_with("Quote column"))?;
+        assert_eq!(action.kind, CodeActionKind::REFACTOR_REWRITE);
+        Some((action.title.clone(), apply(&doc.text, &action.edits)))
+    }
+
+    #[test]
+    fn quote_column_wraps_only_the_unquoted_cells() {
+        let text = "id,name\n1,\"x\"\n2,y\n";
+        let (title, quoted) = quote_column_at(text, text.find("name").unwrap()).unwrap();
+        assert_eq!(title, "Quote column \"name\"");
+        assert_eq!(quoted, "id,\"name\"\n1,\"x\"\n2,\"y\"\n");
+    }
+
+    #[test]
+    fn quote_column_skips_blank_and_error_rows() {
+        let text = "a,b\n\n1,\"x\" y\n2,z\n";
+        let (_, quoted) = quote_column_at(text, text.find('b').unwrap()).unwrap();
+        // Column 1 only: header quoted, blank row untouched, the
+        // text-after-quote row untouched, `z` quoted.
+        assert_eq!(quoted, "a,\"b\"\n\n1,\"x\" y\n2,\"z\"\n");
+    }
+
+    #[test]
+    fn quote_column_falls_back_to_a_numbered_title() {
+        // Row 1 is longer than the header: column 3 has no header name.
+        let text = "a,b\n1,2,3\n";
+        let (title, _) = quote_column_at(text, text.find('3').unwrap()).unwrap();
+        assert_eq!(title, "Quote column #3");
+    }
+
+    #[test]
+    fn fully_quoted_columns_offer_no_column_action() {
+        let text = "\"a\"\n\"b\"\n";
+        assert_eq!(quote_column_at(text, 1), None);
     }
 }
