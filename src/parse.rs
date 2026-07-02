@@ -246,6 +246,16 @@ impl Parser<'_> {
         self.rows.push(Row { span, cells });
     }
 
+    /// Record a recovered error against the row currently being parsed
+    /// (its index is what `rows.len()` will be once it is pushed).
+    fn error(&mut self, kind: ParseErrorKind, start: usize, end: usize) {
+        self.errors.push(ParseError {
+            kind,
+            span: Span::new(start, end),
+            row: self.rows.len(),
+        });
+    }
+
     /// Consume the row terminator, if any, recording the file's first one.
     fn row_terminator(&mut self) -> bool {
         match self.bytes.get(self.pos) {
@@ -318,8 +328,16 @@ impl Parser<'_> {
         let mut has_escaped_quotes = false;
         let content_end = loop {
             match self.bytes.get(self.pos) {
-                // Unclosed quote: the error report lands in a later cycle.
-                None => break self.pos,
+                None => {
+                    // Unclosed: report the opening quote, the rest of the
+                    // file has become this cell's content.
+                    self.error(
+                        ParseErrorKind::UnclosedQuote,
+                        content_start,
+                        content_start + 1,
+                    );
+                    break self.pos;
+                }
                 Some(b'"') => {
                     if self.bytes.get(self.pos + 1) == Some(&b'"') {
                         has_escaped_quotes = true;
@@ -511,6 +529,25 @@ mod tests {
         // terminator (\r\n) is excluded.
         assert_eq!(table.rows[0].span.slice(text), "\"x\ny\",2");
         assert_eq!(table.line_terminator, LineTerminator::CrLf);
+    }
+
+    #[test]
+    fn unclosed_quote_swallows_the_rest_and_reports_the_opening_quote() {
+        let text = "a,\"bc\nd";
+        let table = parse(text, Dialect::Csv);
+
+        assert_eq!(table.rows.len(), 1);
+        assert_eq!(table.rows[0].cells.len(), 2);
+        assert_eq!(table.rows[0].cells[1].value(text), "bc\nd");
+        // That trailing \n is cell content, not a row terminator.
+        assert!(!table.ends_with_newline);
+
+        assert_eq!(table.errors.len(), 1);
+        let error = &table.errors[0];
+        assert_eq!(error.kind, ParseErrorKind::UnclosedQuote);
+        assert_eq!(error.span.slice(text), "\"");
+        assert_eq!(error.span.start, 2);
+        assert_eq!(error.row, 0);
     }
 
     #[test]
