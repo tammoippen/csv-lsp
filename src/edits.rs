@@ -47,22 +47,51 @@ pub fn minimize(old: &str, new: &str) -> Vec<(Span, String)> {
     vec![(span, replacement)]
 }
 
+/// Apply non-overlapping, document-ordered edits to `text` (the shape every
+/// [`crate::features::Action`] carries). Splices back-to-front so earlier
+/// offsets stay valid — the same thing an LSP client does with `TextEdit`s.
+pub fn apply(text: &str, edits: &[(Span, String)]) -> String {
+    let mut result = text.to_owned();
+    for (span, replacement) in edits.iter().rev() {
+        result.replace_range(span.start..span.end, replacement);
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Reference implementation: apply the edits to `old`.
-    fn apply(old: &str, edits: &[(Span, String)]) -> String {
-        let mut result = old.to_owned();
-        for (span, replacement) in edits.iter().rev() {
-            result.replace_range(span.start..span.end, replacement);
-        }
-        result
-    }
-
     #[test]
     fn identical_texts_need_no_edit() {
         assert_eq!(minimize("a,b\n", "a,b\n"), Vec::new());
+    }
+
+    #[test]
+    fn apply_splices_multiple_edits_in_document_order() {
+        let edits = vec![
+            (Span::new(0, 1), "X".to_owned()),
+            (Span::new(2, 2), "!".to_owned()), // pure insertion
+            (Span::new(3, 4), String::new()),  // deletion
+        ];
+        assert_eq!(apply("a,b,c", &edits), "X,!bc");
+    }
+
+    #[test]
+    fn apply_with_no_edits_is_identity() {
+        assert_eq!(apply("a,b\n", &[]), "a,b\n");
+    }
+
+    #[test]
+    fn apply_round_trips_minimize() {
+        for (old, new) in [
+            ("a,bb,c\n", "a,b,c\n"),
+            ("", "x"),
+            ("aé,b\n", "aè,b\n"),
+            ("same", "same"),
+        ] {
+            assert_eq!(apply(old, &minimize(old, new)), new);
+        }
     }
 
     #[test]
