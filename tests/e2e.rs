@@ -11,14 +11,15 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Exit, Initialized,
     Notification as _, PublishDiagnostics,
 };
-use lsp_types::request::{CodeActionRequest, Initialize, Request as _, Shutdown};
+use lsp_types::request::{CodeActionRequest, Formatting, Initialize, Request as _, Shutdown};
 use lsp_types::{
     ClientCapabilities, CodeAction, CodeActionContext, CodeActionKind, CodeActionOrCommand,
     CodeActionParams, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, GeneralClientCapabilities, InitializeParams, InitializeResult,
-    NumberOrString, OneOf, Position, PositionEncodingKind, PublishDiagnosticsParams, Range,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem,
-    TextDocumentSyncCapability, TextEdit, Uri, VersionedTextDocumentIdentifier,
+    DidOpenTextDocumentParams, DocumentFormattingParams, FormattingOptions,
+    GeneralClientCapabilities, InitializeParams, InitializeResult, NumberOrString, OneOf, Position,
+    PositionEncodingKind, PublishDiagnosticsParams, Range, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier, TextDocumentItem, TextDocumentSyncCapability, TextEdit, Uri,
+    VersionedTextDocumentIdentifier,
 };
 
 const TIMEOUT: Duration = Duration::from_secs(5);
@@ -289,6 +290,69 @@ fn fix_all_source_action_repairs_the_whole_file() {
     assert_eq!(text2, "a,b,c\n1,2,\nx,,\n");
     client.change(&uri, 2, &text2);
     assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    client.shutdown();
+}
+
+/// Request document formatting for `uri`.
+fn format(client: &mut TestClient, uri: &Uri) -> Option<Vec<TextEdit>> {
+    client.request::<Formatting>(DocumentFormattingParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        options: FormattingOptions::default(),
+        work_done_progress_params: Default::default(),
+    })
+}
+
+#[test]
+fn formatting_aligns_columns_under_the_utf16_fallback() {
+    // A client offering nothing gets the mandatory utf-16; the emoji cell
+    // stresses the surrogate-pair position math.
+    let (mut client, init) = TestClient::start_with(&[]);
+    assert_eq!(
+        init.capabilities.position_encoding,
+        Some(PositionEncodingKind::UTF16)
+    );
+
+    let uri: Uri = "file:///t/fmt.csv".parse().unwrap();
+    let text = "a,😀é\nlong,x\n";
+    client.open(&uri, "csv", 1, text);
+    client.recv_diagnostics();
+
+    let edits = format(&mut client, &uri).expect("alignment edits");
+    let aligned = apply_edits(text, &edits, PositionEncoding::Utf16);
+    assert_eq!(aligned, "a   ,😀é\nlong,x\n");
+
+    // Formatting the aligned document is a no-op (idempotence at the
+    // protocol level — critical for format-on-save).
+    client.change(&uri, 2, &aligned);
+    client.recv_diagnostics();
+    assert_eq!(format(&mut client, &uri), None);
+
+    client.shutdown();
+}
+
+#[test]
+fn source_actions_offer_align_and_compact_as_applicable() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/source.csv".parse().unwrap();
+    let text = "id,name\n1,x\n";
+    client.open(&uri, "csv", 1, text);
+    client.recv_diagnostics();
+
+    let only = Some(vec![CodeActionKind::SOURCE]);
+    let actions = code_actions(&mut client, &uri, cursor(0, 0), only.clone());
+    let titles: Vec<_> = actions.iter().map(|action| action.title.as_str()).collect();
+    assert_eq!(titles, ["Align columns"]);
+
+    // After aligning, compact becomes the applicable action.
+    let aligned = apply_edits(text, &edits_for(&actions[0], &uri), PositionEncoding::Utf8);
+    assert_eq!(aligned, "id,name\n1 ,x\n");
+    client.change(&uri, 2, &aligned);
+    client.recv_diagnostics();
+
+    let actions = code_actions(&mut client, &uri, cursor(0, 0), only);
+    let titles: Vec<_> = actions.iter().map(|action| action.title.as_str()).collect();
+    assert_eq!(titles, ["Compact columns"]);
 
     client.shutdown();
 }
