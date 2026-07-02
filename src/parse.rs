@@ -1,7 +1,13 @@
 //! The error-tolerant CSV parser and its span-based data model.
 //!
-//! For M0 this module only defines [`Span`]; the parser itself lands in M1
-//! (see `docs/plan/m1-parser-and-diagnostics.md`).
+//! [`parse`] is **total**: any input produces a [`Table`] (plus
+//! [`ParseError`]s), never a failure. All spans are byte offsets into the
+//! parsed text; the delimiter, quote and line-break bytes are ASCII and can
+//! never occur inside a UTF-8 multibyte sequence, so every span boundary is
+//! a `char` boundary. See `docs/plan/m1-parser-and-diagnostics.md` for the
+//! state machine and recovery rules.
+
+use crate::dialect::Dialect;
 
 /// A half-open byte range `start..end` into the document text.
 ///
@@ -48,6 +54,211 @@ impl Span {
     }
 }
 
+/// How a cell was written in the source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Quoting {
+    /// Bare content, ended by a delimiter or row terminator.
+    Unquoted,
+    /// Wrapped in double quotes (may contain delimiters and newlines).
+    Quoted,
+}
+
+/// The row terminator style of a file: the first terminator seen wins and
+/// is reused when re-rendering. A lone `\r` counts as the `Lf` family.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LineTerminator {
+    /// `\n`
+    Lf,
+    /// `\r\n`
+    CrLf,
+}
+
+impl LineTerminator {
+    /// The terminator's text form.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            LineTerminator::Lf => "\n",
+            LineTerminator::CrLf => "\r\n",
+        }
+    }
+}
+
+/// A parsing problem, reported with an exact span instead of aborting.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseError {
+    /// What went wrong.
+    pub kind: ParseErrorKind,
+    /// The offending bytes (see each kind for the exact policy).
+    pub span: Span,
+    /// Index into `Table::rows` of the row being parsed.
+    pub row: usize,
+}
+
+/// The kinds of quoting damage the parser recovers from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParseErrorKind {
+    /// A quoted cell never sees its closing quote; the span is the opening
+    /// quote and the rest of the file becomes the cell's content.
+    UnclosedQuote,
+    /// A `"` inside an unquoted cell; the span is that byte and the quote
+    /// is kept as literal content.
+    StrayQuote,
+    /// Non-space bytes between a closing quote and the next delimiter; the
+    /// span is the garbage run (trailing spaces trimmed) and the quoted
+    /// value is kept.
+    TextAfterClosingQuote,
+}
+
+/// A parsed cell.
+///
+/// `content_span ⊆ span`: the difference is alignment padding (ASCII
+/// spaces). For quoted cells the content span *includes* the quotes. An
+/// all-padding cell has a zero-width content span at `span.start` (padding
+/// counts as trailing, consistent with left-aligned columns).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cell {
+    /// Full extent, excluding delimiters, including padding.
+    pub span: Span,
+    /// Padding-trimmed extent.
+    pub content_span: Span,
+    /// Whether the source wrapped the cell in quotes.
+    pub quoting: Quoting,
+    /// True when `""` escapes occurred (decoding must allocate).
+    pub has_escaped_quotes: bool,
+}
+
+/// A parsed row. The span excludes the row terminator but — for rows with
+/// multi-line quoted cells — may cover several editor lines.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Row {
+    /// From the first cell's start to the last cell's end.
+    pub span: Span,
+    /// The row's cells, in order; never empty.
+    pub cells: Vec<Cell>,
+}
+
+/// The parse result: always produced, never fails.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Table {
+    /// All rows, blank ones included.
+    pub rows: Vec<Row>,
+    /// Recovered problems, in source order.
+    pub errors: Vec<ParseError>,
+    /// The dialect the text was parsed under.
+    pub dialect: Dialect,
+    /// First row terminator seen (`Lf` for files without terminators).
+    pub line_terminator: LineTerminator,
+    /// Whether the text starts with a UTF-8 byte-order mark (spans never
+    /// include it; re-rendering re-emits it).
+    pub has_bom: bool,
+    /// Whether the text ends with a row terminator (no phantom empty row is
+    /// produced for it).
+    pub ends_with_newline: bool,
+}
+
+/// Parse `text` under `dialect`. Total: never fails, never panics.
+pub fn parse(text: &str, dialect: Dialect) -> Table {
+    Parser {
+        bytes: text.as_bytes(),
+        delimiter: dialect.delimiter(),
+        pos: 0,
+        rows: Vec::new(),
+        errors: Vec::new(),
+        line_terminator: None,
+        ends_with_newline: false,
+    }
+    .run(dialect)
+}
+
+/// How a cell ended, deciding whether another cell follows in the row.
+enum CellEnd {
+    Delimiter,
+    RowEnd,
+}
+
+struct Parser<'t> {
+    bytes: &'t [u8],
+    delimiter: u8,
+    pos: usize,
+    rows: Vec<Row>,
+    errors: Vec<ParseError>,
+    line_terminator: Option<LineTerminator>,
+    ends_with_newline: bool,
+}
+
+impl Parser<'_> {
+    fn run(mut self, dialect: Dialect) -> Table {
+        while self.pos < self.bytes.len() {
+            self.row();
+        }
+        Table {
+            rows: self.rows,
+            errors: self.errors,
+            dialect,
+            line_terminator: self.line_terminator.unwrap_or(LineTerminator::Lf),
+            has_bom: false,
+            ends_with_newline: self.ends_with_newline,
+        }
+    }
+
+    fn row(&mut self) {
+        let start = self.pos;
+        let mut cells = Vec::new();
+        loop {
+            let (cell, end) = self.cell();
+            cells.push(cell);
+            match end {
+                CellEnd::Delimiter => {
+                    self.pos += 1; // consume the delimiter, next cell follows
+                }
+                CellEnd::RowEnd => break,
+            }
+        }
+        let span = Span::new(start, self.pos);
+        let terminated = self.row_terminator();
+        self.ends_with_newline = terminated && self.pos == self.bytes.len();
+        self.rows.push(Row { span, cells });
+    }
+
+    /// Consume the row terminator, if any, recording the file's first one.
+    fn row_terminator(&mut self) -> bool {
+        match self.bytes.get(self.pos) {
+            Some(b'\n') => {
+                self.line_terminator.get_or_insert(LineTerminator::Lf);
+                self.pos += 1;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Parse one cell: `CellStart → InUnquoted`, stopping (without
+    /// consuming) at the row terminator or EOF, and reporting whether a
+    /// delimiter follows.
+    fn cell(&mut self) -> (Cell, CellEnd) {
+        let span_start = self.pos;
+        let content_start = self.pos;
+        let mut content_end = self.pos;
+        let end = loop {
+            match self.bytes.get(self.pos) {
+                None | Some(b'\n') => break CellEnd::RowEnd,
+                Some(&b) if b == self.delimiter => break CellEnd::Delimiter,
+                Some(_) => {
+                    self.pos += 1;
+                    content_end = self.pos;
+                }
+            }
+        };
+        let cell = Cell {
+            span: Span::new(span_start, self.pos),
+            content_span: Span::new(content_start, content_end),
+            quoting: Quoting::Unquoted,
+            has_escaped_quotes: false,
+        };
+        (cell, end)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,5 +291,56 @@ mod tests {
         assert!(span.overlaps(Span::new(0, 4)));
         assert!(!span.overlaps(Span::new(5, 9))); // touching is not overlapping
         assert!(!span.overlaps(Span::new(0, 3)));
+    }
+
+    /// Slices of every cell's span, per row — failures read as text.
+    fn cell_slices<'t>(text: &'t str, table: &Table) -> Vec<Vec<&'t str>> {
+        table
+            .rows
+            .iter()
+            .map(|row| row.cells.iter().map(|cell| cell.span.slice(text)).collect())
+            .collect()
+    }
+
+    #[test]
+    fn parses_unquoted_cells_with_exact_spans() {
+        let text = "a,b,cc\n1,,2\n";
+        let table = parse(text, Dialect::Csv);
+
+        assert_eq!(
+            cell_slices(text, &table),
+            [["a", "b", "cc"], ["1", "", "2"]]
+        );
+        assert_eq!(table.rows[0].span.slice(text), "a,b,cc");
+        assert_eq!(table.rows[1].span.slice(text), "1,,2");
+        assert!(table.errors.is_empty());
+        assert!(table.ends_with_newline);
+
+        let empty = &table.rows[1].cells[1];
+        assert!(empty.span.is_empty());
+        assert_eq!(empty.span.start, "a,b,cc\n1,".len());
+    }
+
+    #[test]
+    fn last_row_without_terminator_is_kept() {
+        let table = parse("a", Dialect::Csv);
+        assert_eq!(table.rows.len(), 1);
+        assert!(!table.ends_with_newline);
+    }
+
+    #[test]
+    fn empty_text_has_no_rows() {
+        let table = parse("", Dialect::Csv);
+        assert!(table.rows.is_empty());
+        assert!(!table.ends_with_newline);
+    }
+
+    #[test]
+    fn delimiter_follows_the_dialect() {
+        let text = "a;b\tc\n";
+        let ssv = parse(text, Dialect::Ssv);
+        assert_eq!(cell_slices(text, &ssv), [["a", "b\tc"]]);
+        let tsv = parse(text, Dialect::Tsv);
+        assert_eq!(cell_slices(text, &tsv), [["a;b", "c"]]);
     }
 }
