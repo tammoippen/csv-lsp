@@ -17,7 +17,8 @@ use lsp_types::notification::{
 use lsp_types::request::{CodeActionRequest, Formatting, Request as _};
 use lsp_types::{
     CodeAction, CodeActionOrCommand, CodeActionParams, Diagnostic, DiagnosticSeverity,
-    InitializeParams, NumberOrString, PublishDiagnosticsParams, TextEdit, WorkspaceEdit,
+    DocumentFormattingParams, InitializeParams, NumberOrString, PublishDiagnosticsParams, TextEdit,
+    WorkspaceEdit,
 };
 
 use crate::capabilities;
@@ -216,9 +217,8 @@ fn dispatch_request(state: &mut ServerState, request: Request) -> Result<Respons
             Ok(Response::new_ok(id, handle_code_action(state, &params)))
         }
         Formatting::METHOD => {
-            let (id, _params) = cast_request::<Formatting>(request)?;
-            // Stub until M3: no edits, but the capability is answerable.
-            Ok(Response::new_ok(id, serde_json::Value::Null))
+            let (id, params) = cast_request::<Formatting>(request)?;
+            Ok(Response::new_ok(id, handle_formatting(state, &params)))
         }
         _ => Ok(Response::new_err(
             request.id,
@@ -285,6 +285,29 @@ fn to_lsp_action(
         is_preferred: action.is_preferred.then_some(true),
         ..Default::default()
     })
+}
+
+/// Formatting = align columns. `FormattingOptions` (tab width etc.) carry
+/// no meaning for CSV and are ignored; `None` for already-aligned files
+/// keeps save-time formatting idempotent.
+fn handle_formatting(
+    state: &ServerState,
+    params: &DocumentFormattingParams,
+) -> Option<Vec<TextEdit>> {
+    let doc = state.store.get(&params.text_document.uri)?;
+    let edits = crate::features::align::align_edits(doc);
+    if edits.is_empty() {
+        return None;
+    }
+    Some(
+        edits
+            .into_iter()
+            .map(|(span, new_text)| TextEdit {
+                range: doc.line_index.range(&doc.text, span, state.encoding),
+                new_text,
+            })
+            .collect(),
+    )
 }
 
 /// Deserialize request params, mapping failures to `InvalidParams`.
