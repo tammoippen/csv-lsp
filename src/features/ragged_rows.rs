@@ -1,11 +1,14 @@
 //! Checks every row's cell count against the header's column contract.
+//!
+//! The short-row analysis is shared with the pad-rows quickfix, so the
+//! diagnostic and its fix can never drift apart.
 
 use std::collections::HashSet;
 
 use serde_json::json;
 
 use crate::features::{Diag, DiagnosticRule, Severity};
-use crate::parse::{Span, Table};
+use crate::parse::{Row, Span, Table};
 
 /// Rows with fewer or more cells than the header (= first non-blank row).
 ///
@@ -14,45 +17,97 @@ use crate::parse::{Span, Table};
 /// wall of ragged-row errors.
 pub struct RaggedRows;
 
+/// A row with fewer cells than the header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShortRow {
+    /// Index into `Table::rows`.
+    pub row: usize,
+    /// How many cells are missing against the header.
+    pub missing: usize,
+}
+
+/// All short rows subject to the column contract — shared by the diagnostic
+/// rule and the pad-rows quickfix.
+pub fn short_rows(table: &Table) -> Vec<ShortRow> {
+    let Some(expected) = table.expected_columns() else {
+        return Vec::new();
+    };
+    checkable(table)
+        .into_iter()
+        .filter(|(_, row)| row.cells.len() < expected)
+        .map(|(index, row)| ShortRow {
+            row: index,
+            missing: expected - row.cells.len(),
+        })
+        .collect()
+}
+
+/// The diagnostic for a short row (also the quickfix's linkage target).
+pub fn missing_cells_diag(table: &Table, short: ShortRow) -> Diag {
+    let row = &table.rows[short.row];
+    let count = row.cells.len();
+    Diag {
+        // Zero-width at the row end: "cells are missing here" — renders as
+        // an end-of-line marker in editors.
+        span: Span::new(row.span.end, row.span.end),
+        severity: Severity::Error,
+        code: "row-missing-cells",
+        message: format!(
+            "row has {count} {}, expected {}",
+            noun(count),
+            count + short.missing
+        ),
+        data: Some(json!({ "row": short.row, "missing": short.missing })),
+    }
+}
+
+/// Rows subject to the column contract: after the header, not blank, not
+/// already broken by a parse error.
+fn checkable(table: &Table) -> Vec<(usize, &Row)> {
+    let Some(header_index) = table.header_index() else {
+        return Vec::new();
+    };
+    let error_rows: HashSet<usize> = table.errors.iter().map(|error| error.row).collect();
+    table
+        .rows
+        .iter()
+        .enumerate()
+        .filter(|&(index, row)| {
+            index > header_index && !row.is_blank() && !error_rows.contains(&index)
+        })
+        .collect()
+}
+
+fn noun(count: usize) -> &'static str {
+    if count == 1 { "cell" } else { "cells" }
+}
+
 impl DiagnosticRule for RaggedRows {
     fn name(&self) -> &'static str {
         "ragged-rows"
     }
 
     fn check(&self, _text: &str, table: &Table) -> Vec<Diag> {
-        let (Some(expected), Some(header_index)) = (table.expected_columns(), table.header_index())
-        else {
+        let Some(expected) = table.expected_columns() else {
             return Vec::new();
         };
-        let error_rows: HashSet<usize> = table.errors.iter().map(|error| error.row).collect();
-
-        let mut diags = Vec::new();
-        for (index, row) in table.rows.iter().enumerate() {
-            if index <= header_index || row.is_blank() || error_rows.contains(&index) {
-                continue;
-            }
+        let mut diags: Vec<Diag> = short_rows(table)
+            .into_iter()
+            .map(|short| missing_cells_diag(table, short))
+            .collect();
+        for (index, row) in checkable(table) {
             let count = row.cells.len();
-            let noun = if count == 1 { "cell" } else { "cells" };
-            if count < expected {
-                diags.push(Diag {
-                    // Zero-width at the row end: "cells are missing here" —
-                    // renders as an end-of-line marker in editors.
-                    span: Span::new(row.span.end, row.span.end),
-                    severity: Severity::Error,
-                    code: "row-missing-cells",
-                    message: format!("row has {count} {noun}, expected {expected}"),
-                    data: Some(json!({ "row": index, "missing": expected - count })),
-                });
-            } else if count > expected {
+            if count > expected {
                 diags.push(Diag {
                     span: Span::new(row.cells[expected].span.start, row.span.end),
                     severity: Severity::Error,
                     code: "row-extra-cells",
-                    message: format!("row has {count} {noun}, expected {expected}"),
+                    message: format!("row has {count} {}, expected {expected}", noun(count)),
                     data: Some(json!({ "row": index, "extra": count - expected })),
                 });
             }
         }
+        diags.sort_by_key(|diag| diag.span.start);
         diags
     }
 }
@@ -99,6 +154,15 @@ mod tests {
         assert_eq!(diag.span.slice(text), "3,4");
         assert_eq!(diag.message, "row has 4 cells, expected 2");
         assert_eq!(diag.data, Some(json!({ "row": 1, "extra": 2 })));
+    }
+
+    #[test]
+    fn mixed_files_report_in_row_order() {
+        let text = "a,b\n1,2,3\n4\n";
+        let diags = check(text);
+        assert_eq!(diags.len(), 2);
+        assert_eq!(diags[0].code, "row-extra-cells");
+        assert_eq!(diags[1].code, "row-missing-cells");
     }
 
     #[test]
