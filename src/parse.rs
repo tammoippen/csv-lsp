@@ -182,16 +182,18 @@ pub struct Table {
 
 /// Parse `text` under `dialect`. Total: never fails, never panics.
 pub fn parse(text: &str, dialect: Dialect) -> Table {
+    const BOM: &str = "\u{feff}";
+    let has_bom = text.starts_with(BOM);
     Parser {
         bytes: text.as_bytes(),
         delimiter: dialect.delimiter(),
-        pos: 0,
+        pos: if has_bom { BOM.len() } else { 0 },
         rows: Vec::new(),
         errors: Vec::new(),
         line_terminator: None,
         ends_with_newline: false,
     }
-    .run(dialect)
+    .run(dialect, has_bom)
 }
 
 /// How a cell ended, deciding whether another cell follows in the row.
@@ -211,7 +213,7 @@ struct Parser<'t> {
 }
 
 impl Parser<'_> {
-    fn run(mut self, dialect: Dialect) -> Table {
+    fn run(mut self, dialect: Dialect, has_bom: bool) -> Table {
         while self.pos < self.bytes.len() {
             self.row();
         }
@@ -220,7 +222,7 @@ impl Parser<'_> {
             errors: self.errors,
             dialect,
             line_terminator: self.line_terminator.unwrap_or(LineTerminator::Lf),
-            has_bom: false,
+            has_bom,
             ends_with_newline: self.ends_with_newline,
         }
     }
@@ -252,6 +254,17 @@ impl Parser<'_> {
                 self.pos += 1;
                 true
             }
+            Some(b'\r') => {
+                if self.bytes.get(self.pos + 1) == Some(&b'\n') {
+                    self.line_terminator.get_or_insert(LineTerminator::CrLf);
+                    self.pos += 2;
+                } else {
+                    // Lone \r is a line break per the LSP spec; Lf family.
+                    self.line_terminator.get_or_insert(LineTerminator::Lf);
+                    self.pos += 1;
+                }
+                true
+            }
             _ => false,
         }
     }
@@ -272,7 +285,7 @@ impl Parser<'_> {
         let mut content_end = self.pos;
         let end = loop {
             match self.bytes.get(self.pos) {
-                None | Some(b'\n') => break CellEnd::RowEnd,
+                None | Some(b'\n' | b'\r') => break CellEnd::RowEnd,
                 Some(&b) if b == self.delimiter => break CellEnd::Delimiter,
                 Some(b' ') => self.pos += 1, // padding, unless content follows
                 Some(_) => {
@@ -322,7 +335,7 @@ impl Parser<'_> {
         // InAfterQuoted: alignment padding until delimiter / row end.
         let end = loop {
             match self.bytes.get(self.pos) {
-                None | Some(b'\n') => break CellEnd::RowEnd,
+                None | Some(b'\n' | b'\r') => break CellEnd::RowEnd,
                 Some(&b) if b == self.delimiter => break CellEnd::Delimiter,
                 Some(b' ') => self.pos += 1, // tolerated: our own align layout
                 Some(_) => self.pos += 1,    // garbage: error lands in a later cycle
@@ -457,6 +470,47 @@ mod tests {
         let text = "\"\",x\n";
         let table = parse(text, Dialect::Csv);
         assert_eq!(table.rows[0].cells[0].value(text), "");
+    }
+
+    #[test]
+    fn bom_is_recorded_and_excluded_from_spans() {
+        let text = "\u{feff}a,b\n";
+        let table = parse(text, Dialect::Csv);
+        assert!(table.has_bom);
+        assert_eq!(table.rows[0].cells[0].span.start, 3);
+        assert_eq!(cell_slices(text, &table), [["a", "b"]]);
+    }
+
+    #[test]
+    fn crlf_rows_record_the_terminator_and_stay_out_of_spans() {
+        let text = "a,b\r\n1,2\r\n";
+        let table = parse(text, Dialect::Csv);
+        assert_eq!(table.line_terminator, LineTerminator::CrLf);
+        assert_eq!(table.rows[0].span.slice(text), "a,b");
+        assert_eq!(cell_slices(text, &table), [["a", "b"], ["1", "2"]]);
+        assert!(table.ends_with_newline);
+    }
+
+    #[test]
+    fn lone_cr_ends_a_row_as_lf_family() {
+        let text = "a\rb\n";
+        let table = parse(text, Dialect::Csv);
+        assert_eq!(table.rows.len(), 2);
+        assert_eq!(table.line_terminator, LineTerminator::Lf);
+    }
+
+    #[test]
+    fn quoted_cells_span_multiple_lines() {
+        let text = "\"x\ny\",2\r\nnext\r\n";
+        let table = parse(text, Dialect::Csv);
+        assert_eq!(table.rows.len(), 2);
+        assert!(table.errors.is_empty());
+        let cell = &table.rows[0].cells[0];
+        assert_eq!(cell.value(text), "x\ny");
+        // The row span covers two editor lines; only the file's row
+        // terminator (\r\n) is excluded.
+        assert_eq!(table.rows[0].span.slice(text), "\"x\ny\",2");
+        assert_eq!(table.line_terminator, LineTerminator::CrLf);
     }
 
     #[test]
