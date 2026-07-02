@@ -24,6 +24,7 @@ use lsp_types::{
 use crate::capabilities;
 use crate::dialect::Dialect;
 use crate::document::{Document, Store};
+use crate::edits;
 use crate::features::{Action, ActionContext, Diag, Registry, ServerCommand, Severity};
 use crate::log;
 use crate::parse::Span;
@@ -37,6 +38,12 @@ struct ServerState {
     store: Store,
     encoding: PositionEncoding,
     registry: Registry,
+    /// Dialect conversions offered in the last `codeAction` response, per
+    /// URI: `(converted full text, target dialect)`. When a `didChange`
+    /// carries exactly one of these texts, the user applied that conversion
+    /// and the document flips dialect. Cleared on every change/close, so
+    /// dismissed actions cost nothing.
+    pending_transforms: HashMap<String, Vec<(String, Dialect)>>,
 }
 
 /// A request failure that becomes an LSP error response.
@@ -61,6 +68,7 @@ pub fn run(connection: Connection) -> Result<(), BoxError> {
         store: Store::default(),
         encoding,
         registry: Registry::standard(),
+        pending_transforms: HashMap::new(),
     };
     for message in &connection.receiver {
         match message {
@@ -108,7 +116,23 @@ fn handle_notification(
                     return Ok(());
                 }
                 let id = params.text_document;
-                if let Some(doc) = state.store.change(&id.uri, id.version, change.text) {
+                // A change matching an offered conversion IS that
+                // conversion: adopt its dialect for the reparse.
+                let dialect_override =
+                    state
+                        .pending_transforms
+                        .remove(id.uri.as_str())
+                        .and_then(|offers| {
+                            offers
+                                .into_iter()
+                                .find(|(expected, _)| *expected == change.text)
+                                .map(|(_, dialect)| dialect)
+                        });
+                if let Some(doc) =
+                    state
+                        .store
+                        .change(&id.uri, id.version, change.text, dialect_override)
+                {
                     publish_diagnostics(connection, state.encoding, &state.registry, doc)?;
                 }
             }
@@ -117,6 +141,7 @@ fn handle_notification(
             if let Some(params) = cast_notification::<DidCloseTextDocument>(notification) {
                 let uri = params.text_document.uri;
                 state.store.close(&uri);
+                state.pending_transforms.remove(uri.as_str());
                 // Clear this file's squiggles in the editor.
                 let clear = PublishDiagnosticsParams {
                     uri,
@@ -242,8 +267,13 @@ fn dispatch_request(
     }
 }
 
-/// Compute the code actions for the requested range.
-fn handle_code_action(state: &ServerState, params: &CodeActionParams) -> Vec<CodeActionOrCommand> {
+/// Compute the code actions for the requested range, remembering offered
+/// dialect conversions so the matching `didChange` can flip the document's
+/// dialect.
+fn handle_code_action(
+    state: &mut ServerState,
+    params: &CodeActionParams,
+) -> Vec<CodeActionOrCommand> {
     let Some(doc) = state.store.get(&params.text_document.uri) else {
         return Vec::new();
     };
@@ -259,12 +289,25 @@ fn handle_code_action(state: &ServerState, params: &CodeActionParams) -> Vec<Cod
         client_diagnostics: &params.context.diagnostics,
         only: params.context.only.as_deref(),
     };
-    state
+    let mut offered_transforms = Vec::new();
+    let encoding = state.encoding;
+    let actions: Vec<CodeActionOrCommand> = state
         .registry
         .actions(&ctx)
         .into_iter()
-        .map(|action| to_lsp_action(action, doc, state.encoding))
-        .collect()
+        .map(|action| {
+            if let Some(dialect) = action.dialect_change {
+                offered_transforms.push((edits::apply(&doc.text, &action.edits), dialect));
+            }
+            to_lsp_action(action, doc, encoding)
+        })
+        .collect();
+    if !offered_transforms.is_empty() {
+        state
+            .pending_transforms
+            .insert(doc.uri.as_str().to_owned(), offered_transforms);
+    }
+    actions
 }
 
 /// The boundary conversion for actions: spans → ranges, one workspace edit
