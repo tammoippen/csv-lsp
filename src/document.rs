@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use lsp_types::Uri;
 
 use crate::dialect::Dialect;
+use crate::parse::{Table, parse};
 use crate::position::LineIndex;
 
 /// A single open document with its derived state.
@@ -25,6 +26,8 @@ pub struct Document {
     pub dialect: Dialect,
     /// Line-start index for position conversion; rebuilt on every change.
     pub line_index: LineIndex,
+    /// The parse result; rebuilt on every change.
+    pub table: Table,
 }
 
 impl Document {
@@ -36,12 +39,14 @@ impl Document {
             .or_else(|| Dialect::sniff(&text))
             .unwrap_or(Dialect::Csv);
         let line_index = LineIndex::new(&text);
+        let table = parse(&text, dialect);
         Document {
             uri,
             version,
             text,
             dialect,
             line_index,
+            table,
         }
     }
 
@@ -49,6 +54,7 @@ impl Document {
     pub fn update(&mut self, version: i32, text: String) {
         self.version = version;
         self.line_index = LineIndex::new(&text);
+        self.table = parse(&text, self.dialect);
         self.text = text;
     }
 }
