@@ -10,7 +10,7 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Exit, Initialized,
     Notification as _, PublishDiagnostics,
 };
-use lsp_types::request::{Initialize, Shutdown};
+use lsp_types::request::{CodeActionRequest, Initialize, Request as _, Shutdown};
 use lsp_types::{
     ClientCapabilities, DiagnosticSeverity, DidChangeTextDocumentParams,
     DidCloseTextDocumentParams, DidOpenTextDocumentParams, GeneralClientCapabilities,
@@ -263,6 +263,24 @@ fn unknown_requests_get_method_not_found_and_the_server_survives() {
     assert_eq!(error.code, ErrorCode::MethodNotFound as i32);
 
     // The server keeps serving after the error.
+    let response = client.raw_request("textDocument/hover", serde_json::json!({}));
+    assert!(response.error.is_some());
+
+    client.shutdown();
+}
+
+#[test]
+fn malformed_request_params_get_invalid_params_and_the_server_survives() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+
+    let response = client.raw_request(
+        CodeActionRequest::METHOD,
+        serde_json::json!({ "bogus": true }),
+    );
+    let error = response.error.expect("expected an error response");
+    assert_eq!(error.code, ErrorCode::InvalidParams as i32);
+
+    // Still serving.
     let response = client.raw_request("textDocument/hover", serde_json::json!({}));
     assert!(response.error.is_some());
 
