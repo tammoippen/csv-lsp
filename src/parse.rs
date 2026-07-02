@@ -7,6 +7,8 @@
 //! a `char` boundary. See `docs/plan/m1-parser-and-diagnostics.md` for the
 //! state machine and recovery rules.
 
+use std::borrow::Cow;
+
 use crate::dialect::Dialect;
 
 /// A half-open byte range `start..end` into the document text.
@@ -127,6 +129,28 @@ pub struct Cell {
     pub has_escaped_quotes: bool,
 }
 
+impl Cell {
+    /// The decoded value: padding trimmed, quotes stripped, `""` unescaped.
+    /// Borrows from `text` unless unescaping forces an allocation.
+    pub fn value<'t>(&self, text: &'t str) -> Cow<'t, str> {
+        let content = self.content_span.slice(text);
+        match self.quoting {
+            Quoting::Unquoted => Cow::Borrowed(content),
+            Quoting::Quoted => {
+                // An unclosed cell has no closing quote to strip; both
+                // strips are therefore optional.
+                let inner = content.strip_prefix('"').unwrap_or(content);
+                let inner = inner.strip_suffix('"').unwrap_or(inner);
+                if self.has_escaped_quotes {
+                    Cow::Owned(inner.replace("\"\"", "\""))
+                } else {
+                    Cow::Borrowed(inner)
+                }
+            }
+        }
+    }
+}
+
 /// A parsed row. The span excludes the row terminator but — for rows with
 /// multi-line quoted cells — may cover several editor lines.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -241,6 +265,9 @@ impl Parser<'_> {
         while self.bytes.get(self.pos) == Some(&b' ') {
             self.pos += 1;
         }
+        if self.bytes.get(self.pos) == Some(&b'"') {
+            return self.quoted_cell(span_start);
+        }
         let content_start = self.pos;
         let mut content_end = self.pos;
         let end = loop {
@@ -266,6 +293,46 @@ impl Parser<'_> {
             content_span,
             quoting: Quoting::Unquoted,
             has_escaped_quotes: false,
+        };
+        (cell, end)
+    }
+
+    /// `InQuoted → InAfterQuoted`: the content span includes the quotes;
+    /// delimiters and line breaks inside them are content.
+    fn quoted_cell(&mut self, span_start: usize) -> (Cell, CellEnd) {
+        let content_start = self.pos;
+        self.pos += 1; // opening quote
+        let mut has_escaped_quotes = false;
+        let content_end = loop {
+            match self.bytes.get(self.pos) {
+                // Unclosed quote: the error report lands in a later cycle.
+                None => break self.pos,
+                Some(b'"') => {
+                    if self.bytes.get(self.pos + 1) == Some(&b'"') {
+                        has_escaped_quotes = true;
+                        self.pos += 2; // escaped pair is content
+                    } else {
+                        self.pos += 1; // closing quote
+                        break self.pos;
+                    }
+                }
+                Some(_) => self.pos += 1, // incl. delimiters and newlines
+            }
+        };
+        // InAfterQuoted: alignment padding until delimiter / row end.
+        let end = loop {
+            match self.bytes.get(self.pos) {
+                None | Some(b'\n') => break CellEnd::RowEnd,
+                Some(&b) if b == self.delimiter => break CellEnd::Delimiter,
+                Some(b' ') => self.pos += 1, // tolerated: our own align layout
+                Some(_) => self.pos += 1,    // garbage: error lands in a later cycle
+            }
+        };
+        let cell = Cell {
+            span: Span::new(span_start, self.pos),
+            content_span: Span::new(content_start, content_end),
+            quoting: Quoting::Quoted,
+            has_escaped_quotes,
         };
         (cell, end)
     }
@@ -351,6 +418,45 @@ mod tests {
         assert_eq!(padded.span.slice(text), "  ");
         assert!(padded.content_span.is_empty());
         assert_eq!(padded.content_span.start, padded.span.start);
+    }
+
+    #[test]
+    fn quoted_cells_may_contain_delimiters() {
+        let text = "\"a,b\",c\n";
+        let table = parse(text, Dialect::Csv);
+        assert_eq!(cell_slices(text, &table), [["\"a,b\"", "c"]]);
+        let quoted = &table.rows[0].cells[0];
+        assert_eq!(quoted.quoting, Quoting::Quoted);
+        assert_eq!(quoted.content_span.slice(text), "\"a,b\"");
+        assert!(matches!(quoted.value(text), Cow::Borrowed("a,b")));
+    }
+
+    #[test]
+    fn escaped_quotes_decode_with_allocation() {
+        let text = "\"x\"\"y\"\n";
+        let table = parse(text, Dialect::Csv);
+        let cell = &table.rows[0].cells[0];
+        assert!(cell.has_escaped_quotes);
+        assert!(matches!(cell.value(text), Cow::Owned(_)));
+        assert_eq!(cell.value(text), "x\"y");
+    }
+
+    #[test]
+    fn padding_around_quoted_cells_is_tolerated() {
+        let text = " \"q\" ,z\n";
+        let table = parse(text, Dialect::Csv);
+        assert!(table.errors.is_empty());
+        let cell = &table.rows[0].cells[0];
+        assert_eq!(cell.span.slice(text), " \"q\" ");
+        assert_eq!(cell.content_span.slice(text), "\"q\"");
+        assert_eq!(cell.value(text), "q");
+    }
+
+    #[test]
+    fn empty_quoted_cell_decodes_to_empty() {
+        let text = "\"\",x\n";
+        let table = parse(text, Dialect::Csv);
+        assert_eq!(table.rows[0].cells[0].value(text), "");
     }
 
     #[test]
