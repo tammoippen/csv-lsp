@@ -139,13 +139,29 @@ impl Registry {
             .collect()
     }
 
-    /// All applicable actions, in provider order.
+    /// All applicable actions, in provider order, honoring the client's
+    /// `only` kind filter.
     pub fn actions(&self, ctx: &ActionContext) -> Vec<Action> {
         self.providers
             .iter()
             .flat_map(|provider| provider.actions(ctx))
+            .filter(|action| kind_matches(ctx.only, &action.kind))
             .collect()
     }
+}
+
+/// Dotted-prefix kind matching per the LSP spec: `source` matches
+/// `source.fixAll`, but `quickfix` does not match `quickfixes`.
+fn kind_matches(only: Option<&[CodeActionKind]>, kind: &CodeActionKind) -> bool {
+    let Some(only) = only else {
+        return true;
+    };
+    only.iter().any(|allowed| {
+        let allowed = allowed.as_str();
+        let kind = kind.as_str();
+        kind == allowed
+            || (kind.starts_with(allowed) && kind.as_bytes().get(allowed.len()) == Some(&b'.'))
+    })
 }
 
 #[cfg(test)]
@@ -194,5 +210,65 @@ mod tests {
         assert!(ctx_at(&doc, 5).intersects(row0)); // cursor at the row end
         assert!(ctx_at(&doc, 0).intersects(row0));
         assert!(!ctx_at(&doc, 6).intersects(row0)); // next row's start
+    }
+
+    #[test]
+    fn only_filter_uses_dotted_prefix_semantics() {
+        use lsp_types::CodeActionKind;
+
+        use super::kind_matches;
+
+        // No filter: everything passes.
+        assert!(kind_matches(None, &CodeActionKind::QUICKFIX));
+        // Exact match.
+        assert!(kind_matches(
+            Some(&[CodeActionKind::SOURCE_FIX_ALL]),
+            &CodeActionKind::SOURCE_FIX_ALL
+        ));
+        // Prefix match down the dotted hierarchy.
+        assert!(kind_matches(
+            Some(&[CodeActionKind::SOURCE]),
+            &CodeActionKind::SOURCE_FIX_ALL
+        ));
+        // But not the other way around, and not on string prefixes.
+        assert!(!kind_matches(
+            Some(&[CodeActionKind::SOURCE_FIX_ALL]),
+            &CodeActionKind::SOURCE
+        ));
+        assert!(!kind_matches(
+            Some(&[CodeActionKind::new("quick")]),
+            &CodeActionKind::QUICKFIX
+        ));
+        // A quickfix disappears under a source-only filter.
+        assert!(!kind_matches(
+            Some(&[CodeActionKind::SOURCE]),
+            &CodeActionKind::QUICKFIX
+        ));
+        // An empty filter hides everything.
+        assert!(!kind_matches(Some(&[]), &CodeActionKind::QUICKFIX));
+    }
+
+    #[test]
+    fn the_registry_applies_the_only_filter() {
+        use lsp_types::CodeActionKind;
+
+        let doc = doc("a,b,c\n1,2\n");
+        let registry = super::Registry::standard();
+
+        let offset = doc.text.find("1,2").unwrap();
+        let mut ctx = ctx_at(&doc, offset);
+        assert_eq!(registry.actions(&ctx).len(), 2); // quickfix + fix-all
+
+        let only = [CodeActionKind::SOURCE];
+        ctx.only = Some(&only);
+        let actions = registry.actions(&ctx);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].kind, CodeActionKind::SOURCE_FIX_ALL);
+
+        let only = [CodeActionKind::QUICKFIX];
+        ctx.only = Some(&only);
+        let actions = registry.actions(&ctx);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].kind, CodeActionKind::QUICKFIX);
     }
 }
