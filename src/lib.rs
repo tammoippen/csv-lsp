@@ -5,5 +5,6 @@
 //! the module map and `docs/plan/` for the milestone plans.
 
 pub mod dialect;
+pub mod document;
 pub mod parse;
 pub mod position;
