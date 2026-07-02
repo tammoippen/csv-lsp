@@ -8,12 +8,16 @@
 use std::error::Error;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use lsp_server::{Connection, ErrorCode, Message, Request, RequestId, Response};
-use lsp_types::InitializeParams;
+use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
+use lsp_types::notification::{
+    DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Notification as _,
+    PublishDiagnostics,
+};
 use lsp_types::request::{CodeActionRequest, Formatting, Request as _};
+use lsp_types::{InitializeParams, PublishDiagnosticsParams};
 
 use crate::capabilities;
-use crate::document::Store;
+use crate::document::{Document, Store};
 use crate::log;
 
 /// Boxed error type used at the server boundary.
@@ -45,7 +49,6 @@ pub fn run(connection: Connection) -> Result<(), BoxError> {
     let mut state = ServerState {
         store: Store::default(),
     };
-    let _ = &mut state.store; // used from M1 on; keep construction honest
     for message in &connection.receiver {
         match message {
             Message::Request(request) => {
@@ -55,14 +58,101 @@ pub fn run(connection: Connection) -> Result<(), BoxError> {
                 let response = handle_request(&mut state, request);
                 connection.sender.send(Message::Response(response))?;
             }
-            Message::Notification(_notification) => {
-                // Document lifecycle lands in the next cycle.
+            Message::Notification(notification) => {
+                handle_notification(&mut state, &connection, notification)?;
             }
             // We never send server→client requests, so no responses arrive.
             Message::Response(_) => {}
         }
     }
     Ok(())
+}
+
+/// Track the document lifecycle and push diagnostics after every change.
+fn handle_notification(
+    state: &mut ServerState,
+    connection: &Connection,
+    notification: Notification,
+) -> Result<(), BoxError> {
+    match notification.method.as_str() {
+        DidOpenTextDocument::METHOD => {
+            if let Some(params) = cast_notification::<DidOpenTextDocument>(notification) {
+                let item = params.text_document;
+                let doc = state
+                    .store
+                    .open(item.uri, &item.language_id, item.version, item.text);
+                publish_diagnostics(connection, doc)?;
+            }
+        }
+        DidChangeTextDocument::METHOD => {
+            if let Some(mut params) = cast_notification::<DidChangeTextDocument>(notification) {
+                // FULL sync: exactly one change carrying the whole text.
+                let Some(change) = params.content_changes.pop() else {
+                    return Ok(());
+                };
+                if change.range.is_some() {
+                    log!("ignoring ranged change under FULL sync (client bug)");
+                    return Ok(());
+                }
+                let id = params.text_document;
+                if let Some(doc) = state.store.change(&id.uri, id.version, change.text) {
+                    publish_diagnostics(connection, doc)?;
+                }
+            }
+        }
+        DidCloseTextDocument::METHOD => {
+            if let Some(params) = cast_notification::<DidCloseTextDocument>(notification) {
+                let uri = params.text_document.uri;
+                state.store.close(&uri);
+                // Clear this file's squiggles in the editor.
+                let clear = PublishDiagnosticsParams {
+                    uri,
+                    diagnostics: Vec::new(),
+                    version: None,
+                };
+                send_notification::<PublishDiagnostics>(connection, clear)?;
+            }
+        }
+        // didSave, willSave, $/cancelRequest, $/setTrace: nothing to do —
+        // a synchronous server answers before cancellation could matter.
+        _ => {}
+    }
+    Ok(())
+}
+
+/// Publish the document's diagnostics (empty until the M1 registry lands).
+fn publish_diagnostics(connection: &Connection, doc: &Document) -> Result<(), BoxError> {
+    let params = PublishDiagnosticsParams {
+        uri: doc.uri.clone(),
+        diagnostics: Vec::new(),
+        version: Some(doc.version),
+    };
+    send_notification::<PublishDiagnostics>(connection, params)
+}
+
+fn send_notification<N: lsp_types::notification::Notification>(
+    connection: &Connection,
+    params: N::Params,
+) -> Result<(), BoxError> {
+    let notification = Notification::new(N::METHOD.to_owned(), params);
+    connection
+        .sender
+        .send(Message::Notification(notification))?;
+    Ok(())
+}
+
+/// Deserialize notification params; malformed ones are logged and dropped
+/// (notifications must never be answered, not even with errors).
+fn cast_notification<N: lsp_types::notification::Notification>(
+    notification: Notification,
+) -> Option<N::Params> {
+    match notification.extract(N::METHOD) {
+        Ok(params) => Some(params),
+        Err(err) => {
+            log!("malformed `{}` notification: {err}", N::METHOD);
+            None
+        }
+    }
 }
 
 /// Answer a request, converting errors and panics into error responses.
