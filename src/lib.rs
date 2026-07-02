@@ -4,5 +4,6 @@
 //! protocol tests in `tests/` can exercise it. See `docs/architecture.md` for
 //! the module map and `docs/plan/` for the milestone plans.
 
+pub mod dialect;
 pub mod parse;
 pub mod position;
