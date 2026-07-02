@@ -10,6 +10,7 @@ pub mod document;
 pub mod features;
 pub mod parse;
 pub mod position;
+pub mod render;
 pub mod server;
 
 /// Log a line to **stderr** when `CSV_LSP_LOG=1` is set.
