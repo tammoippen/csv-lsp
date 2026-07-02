@@ -449,6 +449,54 @@ fn reinterpret_then_convert_repairs_a_mislabeled_file() {
 }
 
 #[test]
+fn quote_column_applies_across_all_rows() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/quote.csv".parse().unwrap();
+    let text = "id,name\n1,\"x\"\n2,y\n";
+    client.open(&uri, "csv", 1, text);
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    // Cursor in the `name` column, filtered to refactors only.
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 3),
+        Some(vec![CodeActionKind::REFACTOR]),
+    );
+    assert!(actions.iter().all(|action| {
+        action
+            .kind
+            .as_ref()
+            .is_some_and(|kind| kind.as_str().starts_with("refactor"))
+    }));
+    let column = actions
+        .iter()
+        .find(|action| action.title == "Quote column \"name\"")
+        .expect("quote column offered");
+
+    let quoted = apply_edits(text, &edits_for(column, &uri), PositionEncoding::Utf8);
+    assert_eq!(quoted, "id,\"name\"\n1,\"x\"\n2,\"y\"\n");
+    client.change(&uri, 2, &quoted);
+    // Quoting is structure-neutral: still no diagnostics.
+    assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    // The column is fully quoted now — the action disappears.
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 3),
+        Some(vec![CodeActionKind::REFACTOR]),
+    );
+    assert!(
+        !actions
+            .iter()
+            .any(|action| action.title.starts_with("Quote column"))
+    );
+
+    client.shutdown();
+}
+
+#[test]
 fn unknown_commands_get_invalid_params() {
     let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
     let response = client.raw_request(
