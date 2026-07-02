@@ -11,7 +11,8 @@ use crate::features::ragged_rows::{ShortRow, missing_cells_diag, short_rows};
 use crate::features::{Action, ActionContext, ActionProvider};
 use crate::parse::{Span, Table};
 
-/// Per-row quickfixes for short rows under the cursor.
+/// Per-row quickfixes for short rows under the cursor, plus a whole-file
+/// `source.fixAll` that pads every short row at once.
 pub struct PadRows;
 
 impl ActionProvider for PadRows {
@@ -38,6 +39,23 @@ impl ActionProvider for PadRows {
                 is_preferred: true,
             });
         }
+        // Whole-file repair, offered wherever the cursor is (row order keeps
+        // the edits non-overlapping).
+        if !shorts.is_empty() {
+            actions.push(Action {
+                title: format!("Pad all short rows ({})", shorts.len()),
+                kind: CodeActionKind::SOURCE_FIX_ALL,
+                edits: shorts
+                    .iter()
+                    .map(|&short| pad_edit(table, short, &delimiter))
+                    .collect(),
+                fixes: shorts
+                    .iter()
+                    .map(|&short| missing_cells_diag(table, short))
+                    .collect(),
+                is_preferred: false,
+            });
+        }
         actions
     }
 }
@@ -60,8 +78,10 @@ mod tests {
         let ctx = ctx_at(&doc, offset);
         let actions = PadRows.actions(&ctx);
 
-        assert_eq!(actions.len(), 1);
-        let action = &actions[0];
+        let action = actions
+            .iter()
+            .find(|action| action.kind == CodeActionKind::QUICKFIX)
+            .expect("a quickfix for the short row under the cursor");
         assert_eq!(action.title, "Pad row with 1 empty cell");
         assert_eq!(action.kind, CodeActionKind::QUICKFIX);
         assert!(action.is_preferred);
@@ -80,6 +100,7 @@ mod tests {
         let doc = doc("a,b,c\nx\n");
         let ctx = ctx_at(&doc, doc.text.len() - 2); // on the x row
         let actions = PadRows.actions(&ctx);
+        assert_eq!(actions[0].kind, CodeActionKind::QUICKFIX);
         assert_eq!(actions[0].title, "Pad row with 2 empty cells");
         assert_eq!(actions[0].edits[0].1, ",,");
     }
@@ -113,5 +134,35 @@ mod tests {
     fn clean_files_offer_nothing() {
         let doc = doc("a,b\n1,2\n");
         assert_eq!(PadRows.actions(&ctx_at(&doc, 0)), Vec::new());
+    }
+
+    #[test]
+    fn fix_all_pads_every_short_row_from_anywhere() {
+        let doc = doc("a,b,c\n1,2\nx\n");
+        // Cursor in the header — far away from both short rows.
+        let actions = PadRows.actions(&ctx_at(&doc, 0));
+
+        assert_eq!(actions.len(), 1);
+        let fix_all = &actions[0];
+        assert_eq!(fix_all.title, "Pad all short rows (2)");
+        assert_eq!(fix_all.kind, CodeActionKind::SOURCE_FIX_ALL);
+        assert!(!fix_all.is_preferred);
+        assert_eq!(fix_all.edits.len(), 2);
+        assert_eq!(fix_all.edits[0].1, ",");
+        assert_eq!(fix_all.edits[1].1, ",,");
+        // In document order, so a client can apply them naively.
+        assert!(fix_all.edits[0].0.start < fix_all.edits[1].0.start);
+        assert_eq!(fix_all.fixes.len(), 2);
+    }
+
+    #[test]
+    fn cursor_on_a_short_row_offers_quickfix_and_fix_all() {
+        let doc = doc("a,b,c\n1,2\nx\n");
+        let actions = PadRows.actions(&ctx_at(&doc, doc.text.find("1,2").unwrap()));
+        let kinds: Vec<_> = actions.iter().map(|action| action.kind.clone()).collect();
+        assert_eq!(
+            kinds,
+            [CodeActionKind::QUICKFIX, CodeActionKind::SOURCE_FIX_ALL]
+        );
     }
 }
