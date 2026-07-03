@@ -1,5 +1,7 @@
 # csv-lsp
 
+> This is a project mostly build by Claude. I use it regularly. Use at your own risk.
+
 A language server for CSV, TSV, SSV (semicolon-separated) and PSV
 (pipe-separated) files, built for [Helix](https://helix-editor.com/) but
 working with any LSP client. Ships a tree-sitter grammar for rainbow
