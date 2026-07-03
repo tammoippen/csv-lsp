@@ -13,15 +13,17 @@ use lsp_types::notification::{
     Notification as _, PublishDiagnostics,
 };
 use lsp_types::request::{
-    CodeActionRequest, ExecuteCommand, Formatting, Initialize, Request as _, Shutdown,
+    CodeActionRequest, DocumentHighlightRequest, ExecuteCommand, Formatting, Initialize,
+    Request as _, Shutdown,
 };
 use lsp_types::{
     ClientCapabilities, CodeAction, CodeActionContext, CodeActionKind, CodeActionOrCommand,
     CodeActionParams, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DocumentFormattingParams, ExecuteCommandParams, FormattingOptions,
-    GeneralClientCapabilities, InitializeParams, InitializeResult, NumberOrString, OneOf, Position,
-    PositionEncodingKind, PublishDiagnosticsParams, Range, TextDocumentContentChangeEvent,
-    TextDocumentIdentifier, TextDocumentItem, TextDocumentSyncCapability, TextEdit, Uri,
+    DidOpenTextDocumentParams, DocumentFormattingParams, DocumentHighlightKind,
+    DocumentHighlightParams, ExecuteCommandParams, FormattingOptions, GeneralClientCapabilities,
+    InitializeParams, InitializeResult, NumberOrString, OneOf, Position, PositionEncodingKind,
+    PublishDiagnosticsParams, Range, TextDocumentContentChangeEvent, TextDocumentIdentifier,
+    TextDocumentItem, TextDocumentPositionParams, TextDocumentSyncCapability, TextEdit, Uri,
     VersionedTextDocumentIdentifier,
 };
 
@@ -531,6 +533,61 @@ fn column_edits_round_trip() {
     assert_eq!(restored, text); // byte-identical round trip
     client.change(&uri, 3, &restored);
     assert!(client.recv_diagnostics().diagnostics.is_empty());
+
+    client.shutdown();
+}
+
+/// Request document highlights at a position.
+fn highlights_at(
+    client: &mut TestClient,
+    uri: &Uri,
+    line: u32,
+    character: u32,
+) -> Vec<lsp_types::DocumentHighlight> {
+    client
+        .request::<DocumentHighlightRequest>(DocumentHighlightParams {
+            text_document_position_params: TextDocumentPositionParams {
+                text_document: TextDocumentIdentifier { uri: uri.clone() },
+                position: Position { line, character },
+            },
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        })
+        .unwrap_or_default()
+}
+
+#[test]
+fn document_highlight_marks_the_whole_column() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/highlight.csv".parse().unwrap();
+    client.open(&uri, "csv", 1, "id,name\n1,x\n2,\n");
+    client.recv_diagnostics();
+
+    // Cursor inside `name` (line 0, character 4).
+    let highlights = highlights_at(&mut client, &uri, 0, 4);
+    assert_eq!(highlights.len(), 3);
+    assert!(
+        highlights
+            .iter()
+            .all(|h| h.kind == Some(DocumentHighlightKind::TEXT))
+    );
+    let ranges: Vec<(u32, u32, u32, u32)> = highlights
+        .iter()
+        .map(|h| {
+            (
+                h.range.start.line,
+                h.range.start.character,
+                h.range.end.line,
+                h.range.end.character,
+            )
+        })
+        .collect();
+    // `name`, `x`, and a zero-width range in the empty cell (a cursor to
+    // type into) — exactly what Helix turns into a column selection.
+    assert_eq!(ranges, [(0, 3, 0, 7), (1, 2, 1, 3), (2, 2, 2, 2)]);
+
+    // No cell under the cursor → no highlights.
+    assert!(highlights_at(&mut client, &uri, 9, 0).is_empty());
 
     client.shutdown();
 }
