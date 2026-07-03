@@ -11,8 +11,8 @@ permissions:
   contents: read
 
 jobs:
-  publish:
-    name: gate, verify tag, publish to crates.io
+  gate:
+    name: fmt, clippy, test, doc
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,6 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-
       # The same four gates as ci.yml — never publish what CI would reject.
       - name: rustfmt
         run: cargo fmt --all --check
@@ -30,9 +29,29 @@ jobs:
         run: cargo test
       - name: rustdoc
         run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
+      - name: publish (dry run)
+        if: github.event_name == 'workflow_dispatch'
+        run: cargo publish --locked --dry-run
+
+  publish:
+    name: publish to crates.io
+    if: github.event_name == 'push'
+    needs: gate
+    runs-on: ubuntu-latest
+    # The CARGO_REGISTRY_TOKEN secret lives in this environment (Settings →
+    # Environments → "crates"), whose deployment rule restricts it to v* tags;
+    # the on-main check below pins those tags to main's history.
+    environment:
+      name: crates
+      url: https://crates.io/crates/csv-lsp
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the ancestry check needs history
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
 
       - name: tag matches the crate version
-        if: github.event_name == 'push'
         run: |
           version="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
           if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
@@ -40,14 +59,15 @@ jobs:
             exit 1
           fi
 
-      - name: publish (dry run)
-        if: github.event_name == 'workflow_dispatch'
-        run: cargo publish --locked --dry-run
+      - name: tag commit is on main
+        run: |
+          git fetch --no-tags -q origin main
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "tag ${GITHUB_REF_NAME} does not point into main's history" >&2
+            exit 1
+          fi
 
-      # Needs the CARGO_REGISTRY_TOKEN repository secret: a crates.io API
-      # token with publish scope (https://crates.io/settings/tokens).
-      - name: publish to crates.io
-        if: github.event_name == 'push'
+      - name: publish
         run: cargo publish --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
