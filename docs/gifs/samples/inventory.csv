@@ -1,0 +1,5 @@
+id,name,qty,price
+1,bolt,100,0.10
+2,nut,250
+3,washer
+4,screw,75,0.05

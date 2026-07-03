@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview · csv-lsp docs</title>
+<style>
+/* csv-lsp documentation — shared inline style.
+   Duplicated verbatim in every page so each file stays self-contained;
+   if you change it, change it in all pages (see contributing.html#docs). */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --inset: #eef1f4;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #0969da;
+  --accent-bg: #ddf4ff;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --err: #cf222e;
+  --hl-k: #cf222e; --hl-s: #0a3069; --hl-c: #6e7781; --hl-t: #953800;
+  --hl-f: #8250df; --hl-n: #0550ae; --hl-a: #116329; --hl-dim: #6e7781;
+  --col-0: #cf222e; --col-1: #bc4c00; --col-2: #7d4e00; --col-3: #116329;
+  --col-4: #0550ae; --col-5: #6639ba; --col-6: #99286e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --inset: #1c2129;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --border: #30363d;
+    --accent: #4493f8;
+    --accent-bg: #121d2f;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --hl-k: #ff7b72; --hl-s: #a5d6ff; --hl-c: #8b949e; --hl-t: #ffa657;
+    --hl-f: #d2a8ff; --hl-n: #79c0ff; --hl-a: #7ee787; --hl-dim: #8b949e;
+    --col-0: #ff7b72; --col-1: #f0883e; --col-2: #d29922; --col-3: #3fb950;
+    --col-4: #58a6ff; --col-5: #bc8cff; --col-6: #f778ba;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+}
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+header::after {
+  content: ""; display: block; height: 2px;
+  background: linear-gradient(90deg, var(--col-0), var(--col-1), var(--col-3), var(--col-4), var(--col-5));
+}
+.header-inner {
+  max-width: 60rem; margin: 0 auto; padding: 0.65rem 1.25rem;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.5rem;
+}
+.brand { font-weight: 700; font-size: 1.05rem; color: var(--fg); text-decoration: none; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 400; margin-left: 0.45rem; }
+header nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; font-size: 0.95rem; }
+header nav a { color: var(--muted); text-decoration: none; padding: 0.1rem 0; }
+header nav a:hover { color: var(--fg); }
+header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+footer {
+  max-width: 60rem; margin: 0 auto; padding: 1.25rem;
+  color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border);
+}
+footer a { color: inherit; }
+h1 { font-size: 1.9rem; line-height: 1.25; letter-spacing: -0.02em; margin: 0.8rem 0 0.3rem; }
+p.lead { font-size: 1.1rem; color: var(--muted); margin-top: 0.2rem; }
+h2 { font-size: 1.45rem; letter-spacing: -0.01em; margin: 2.6rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1.15rem; margin: 1.9rem 0 0.5rem; }
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; }
+h2 a.anchor, h3 a.anchor { color: inherit; text-decoration: none; }
+h2 a.anchor:hover::after, h3 a.anchor:hover::after { content: " #"; color: var(--muted); }
+a { color: var(--accent); }
+li { margin: 0.25rem 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+strong { font-weight: 650; }
+code { background: var(--inset); border-radius: 5px; padding: 0.12em 0.35em; font-size: 0.86em; }
+pre {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 0.9rem 0;
+}
+pre code { background: none; border-radius: 0; padding: 0; font-size: 0.86rem; display: block; }
+pre[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute; top: 0.35rem; right: 0.7rem;
+  font-size: 0.68rem; color: var(--muted); font-family: inherit;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+kbd {
+  display: inline-block; padding: 0.08em 0.45em; font-size: 0.82em;
+  background: var(--surface); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 5px;
+}
+.hl-k { color: var(--hl-k); } .hl-s { color: var(--hl-s); } .hl-c { color: var(--hl-c); font-style: italic; }
+.hl-t { color: var(--hl-t); } .hl-f { color: var(--hl-f); } .hl-n { color: var(--hl-n); }
+.hl-a { color: var(--hl-a); } .hl-dim { color: var(--hl-dim); }
+.hl-col0 { color: var(--col-0); } .hl-col1 { color: var(--col-1); } .hl-col2 { color: var(--col-2); }
+.hl-col3 { color: var(--col-3); } .hl-col4 { color: var(--col-4); } .hl-col5 { color: var(--col-5); }
+.hl-col6 { color: var(--col-6); }
+.tablewrap { overflow-x: auto; margin: 0.9rem 0; }
+table { border-collapse: collapse; font-size: 0.92rem; min-width: 60%; }
+th, td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; vertical-align: top; }
+th { background: var(--surface); }
+.note, .tip, .warn, .concept {
+  border: 1px solid var(--border); border-left-width: 4px;
+  border-radius: 6px; padding: 0.7rem 1rem; margin: 1rem 0;
+  background: var(--surface);
+}
+.note { border-left-color: var(--accent); }
+.tip { border-left-color: var(--ok); }
+.warn { border-left-color: var(--warn); }
+.concept { border-left-color: var(--hl-t); }
+.note > :first-child, .tip > :first-child, .warn > :first-child, .concept > :first-child { margin-top: 0.1rem; }
+.note > :last-child, .tip > :last-child, .warn > :last-child, .concept > :last-child { margin-bottom: 0.1rem; }
+.callout-label {
+  display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+}
+.concept .callout-label { color: var(--hl-t); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 0.9rem; margin: 1.2rem 0; }
+.card {
+  display: block; border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.9rem 1rem; background: var(--surface);
+  color: inherit; text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.card:hover { border-color: var(--accent); }
+.card h3 { margin: 0 0 0.3rem; font-size: 1.02rem; color: var(--accent); }
+.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.card .card-num { float: right; color: var(--muted); font-size: 0.8rem; }
+figure.diagram { margin: 1.2rem 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption, figure.gif figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; text-align: center; }
+.d-box { fill: var(--surface); stroke: var(--border); }
+.d-box2 { fill: var(--accent-bg); stroke: var(--accent); }
+.d-txt { fill: var(--fg); font: 13px system-ui, sans-serif; }
+.d-sub { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+.d-mono { fill: var(--fg); font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-mono-sm { fill: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-edge { stroke: var(--muted); fill: none; stroke-width: 1.3; }
+.d-edge-accent { stroke: var(--accent); fill: none; stroke-width: 1.5; }
+.d-arrow { fill: var(--muted); }
+.d-arrow-accent { fill: var(--accent); }
+figure.gif { margin: 1.2rem 0; }
+figure.gif img {
+  display: block; max-width: 100%; border: 1px solid var(--border); border-radius: 10px;
+}
+figure.gif.missing img { display: none; }
+figure.gif .placeholder { display: none; }
+figure.gif.missing .placeholder {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 1px dashed var(--border); border-radius: 10px;
+  padding: 2.2rem 1rem; color: var(--muted); font-size: 0.9rem;
+  background: var(--surface);
+}
+details { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin: 0.9rem 0; background: var(--surface); }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+.prevnext {
+  display: flex; justify-content: space-between; gap: 1rem;
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+.prevnext a { text-decoration: none; }
+.prevnext .dir { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pill {
+  display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.78rem; background: var(--inset); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.05rem 0.55rem;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a class="brand" href="index.html">csv-lsp<span>docs</span></a>
+    <nav>
+      <a href="quickstart.html">Quickstart</a>
+      <a href="features.html">Features</a>
+      <a href="lsp.html">LSP</a>
+      <a href="parser.html">Parser</a>
+      <a href="testing.html">Testing</a>
+      <a href="contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<h1>csv-lsp documentation</h1>
+<p class="lead">A language server for CSV, TSV, SSV and PSV files — built for
+<a href="https://helix-editor.com/">Helix</a>, working with any LSP client. These pages
+document how to use it, how it works inside, and the Rust it is built from.</p>
+
+<p>Editing delimiter-separated files by hand is fiddly: a missing cell breaks the column
+contract three screens later, quoting rules are easy to violate, and nothing lines up.
+csv-lsp reparses the file on every keystroke with an <em>error-tolerant</em> parser and turns
+problems into precise editor diagnostics — with fixes, formatting, and column-level
+refactors attached.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 880 250" role="img" aria-label="High-level dataflow: editor to server loop to document store to parser table, and back through the feature registry as diagnostics and code actions">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="d-arrow"/>
+    </marker>
+    <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="d-arrow-accent"/>
+    </marker>
+  </defs>
+  <rect x="10" y="55" width="140" height="60" rx="9" class="d-box"/>
+  <text x="80" y="80" text-anchor="middle" class="d-txt">Helix / editor</text>
+  <text x="80" y="98" text-anchor="middle" class="d-sub">LSP client</text>
+
+  <rect x="235" y="55" width="150" height="60" rx="9" class="d-box"/>
+  <text x="310" y="80" text-anchor="middle" class="d-mono">server.rs</text>
+  <text x="310" y="98" text-anchor="middle" class="d-sub">one synchronous loop</text>
+
+  <rect x="470" y="55" width="150" height="60" rx="9" class="d-box"/>
+  <text x="545" y="80" text-anchor="middle" class="d-mono">document.rs</text>
+  <text x="545" y="98" text-anchor="middle" class="d-sub">text · dialect · version</text>
+
+  <rect x="705" y="55" width="165" height="60" rx="9" class="d-box"/>
+  <text x="787" y="80" text-anchor="middle" class="d-mono">parse.rs → Table</text>
+  <text x="787" y="98" text-anchor="middle" class="d-sub">byte spans + errors</text>
+
+  <rect x="330" y="175" width="240" height="60" rx="9" class="d-box2"/>
+  <text x="450" y="200" text-anchor="middle" class="d-mono">features::Registry</text>
+  <text x="450" y="218" text-anchor="middle" class="d-sub">diagnostic rules · action providers</text>
+
+  <line x1="150" y1="75" x2="234" y2="75" class="d-edge" marker-end="url(#arr)"/>
+  <text x="192" y="45" text-anchor="middle" class="d-sub">JSON-RPC / stdio</text>
+  <line x1="385" y1="85" x2="469" y2="85" class="d-edge" marker-end="url(#arr)"/>
+  <text x="427" y="137" text-anchor="middle" class="d-sub">didOpen / didChange</text>
+  <line x1="620" y1="85" x2="704" y2="85" class="d-edge" marker-end="url(#arr)"/>
+  <text x="662" y="137" text-anchor="middle" class="d-sub">reparse</text>
+
+  <path d="M 787 115 L 787 205 L 572 205" class="d-edge" marker-end="url(#arr)"/>
+  <path d="M 329 205 L 80 205 L 80 117" class="d-edge-accent" marker-end="url(#arrA)"/>
+  <text x="207" y="193" text-anchor="middle" class="d-sub">publishDiagnostics · code actions · edits</text>
+</svg>
+<figcaption>The whole server in one picture. The detailed version lives in
+<a href="lsp.html#dataflow">LSP setup → dataflow</a>.</figcaption>
+</figure>
+
+<h2 id="map"><a class="anchor" href="#map">The reading map</a></h2>
+
+<p>The pages build on each other in this order — but each one is self-contained enough
+to be read alone:</p>
+
+<div class="cards">
+  <a class="card" href="quickstart.html"><span class="card-num">1</span>
+    <h3>Quickstart</h3>
+    <p>The bare minimum: install, wire up Helix, and a 60-second tour of what you get.
+    Read this if you just want to <em>use</em> csv-lsp.</p></a>
+  <a class="card" href="features.html"><span class="card-num">2</span>
+    <h3>Features</h3>
+    <p>Every feature one by one: what it does, how it works inside, what the edge rules
+    are — with GIF slots and the scripts to record them.</p></a>
+  <a class="card" href="lsp.html"><span class="card-num">3</span>
+    <h3>LSP setup</h3>
+    <p>How the Language Server Protocol works, how this server is wired — handshake,
+    dataflow, position encodings, and why it is synchronous.</p></a>
+  <a class="card" href="parser.html"><span class="card-num">4</span>
+    <h3>The CSV parser</h3>
+    <p>The project’s core asset: a total, span-preserving state machine. The data model,
+    the error recovery, and the invariants everything else relies on.</p></a>
+  <a class="card" href="testing.html"><span class="card-num">5</span>
+    <h3>Testing</h3>
+    <p>The test pyramid, and a deep dive into property-based testing with proptest:
+    strategies, shrinking, regression seeds, hostile clients.</p></a>
+  <a class="card" href="contributing.html"><span class="card-num">6</span>
+    <h3>Contributing</h3>
+    <p>Repository structure, the design decisions and principles, the TDD workflow,
+    and the recipe for adding a feature.</p></a>
+</div>
+
+<h2 id="orientation"><a class="anchor" href="#orientation">Orientation in ten lines</a></h2>
+
+<ul>
+  <li><strong>One binary, one thread.</strong> <code>main.rs</code> is a stdio shim; everything else is a library
+      (<code>src/lib.rs</code>) so tests can drive the real server in-memory.</li>
+  <li><strong>All internal offsets are byte offsets.</strong> Conversion to LSP <code>(line, character)</code>
+      positions happens in exactly one place (<code>position.rs</code>), in the encoding negotiated
+      with the client.</li>
+  <li><strong>The parser is total.</strong> Any input produces a <code>Table</code> plus recovered
+      <code>ParseError</code>s — never a failure, never a panic.</li>
+  <li><strong>Features are plugins over the parsed table.</strong> A feature is one module in
+      <code>src/features/</code> plus one line in <code>Registry::standard()</code>.</li>
+  <li><strong>Four runtime dependencies</strong> (<code>lsp-server</code>, <code>lsp-types</code>, <code>serde_json</code>,
+      <code>unicode-width</code>) and one dev-dependency (<code>proptest</code>). Every one of them is a
+      documented decision.</li>
+</ul>
+
+<h2 id="about"><a class="anchor" href="#about">About these pages</a></h2>
+
+<p>Each page is a single self-contained HTML file: styles and scripts are inlined, no
+network requests, no build step. Open them straight from the repository —
+<code>docs/index.html</code> in any browser — or serve the folder statically. They follow your
+system’s light/dark preference.</p>
+
+<p>The feature GIFs are the one optional extra: they live in <code>docs/gifs/</code> and are
+recorded (not committed until you record them) with the scripts in
+<code>docs/gifs/tapes/</code> — see <a href="features.html#recording">Recording the GIFs</a>. Pages degrade
+gracefully while a GIF is missing.</p>
+
+<p>Two other sources of documentation complement these pages:</p>
+<ul>
+  <li>The <a href="../README.md">README</a> — the user-facing summary, including the full Helix
+      <code>languages.toml</code> and the rainbow-grammar setup.</li>
+  <li>The API docs — every public item carries a doc comment (enforced by the
+      <code>missing_docs</code> lint); build them with
+      <code>cargo doc --no-deps --open</code>.</li>
+</ul>
+
+<nav class="prevnext">
+  <span></span>
+  <a href="quickstart.html"><span class="dir">Next</span>Quickstart →</a>
+</nav>
+
+
+</main>
+<footer>csv-lsp · MIT · <a href="https://github.com/tammoippen/csv-lsp">github.com/tammoippen/csv-lsp</a></footer>
+<script>
+/* Tiny syntax highlighter — progressive enhancement; the pages read fine as
+   plain text without it. One alternation regex per language; the first
+   defined capture group decides the color. Duplicated in every page. */
+(function () {
+  "use strict";
+  var esc = function (s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+  function paint(src, re, classes) {
+    var out = "", last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(src)) !== null) {
+      var cls = null;
+      for (var i = 1; i < m.length; i++) {
+        if (m[i] !== undefined) { cls = classes[i - 1]; break; }
+      }
+      out += esc(src.slice(last, m.index));
+      out += cls ? '<span class="hl-' + cls + '">' + esc(m[0]) + "</span>" : esc(m[0]);
+      last = m.index + m[0].length;
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    return out + esc(src.slice(last));
+  }
+  var RUST_KW = "as|break|const|continue|crate|dyn|else|enum|extern|false|fn|for|if|impl|in|let|loop|match|mod|move|mut|pub|ref|return|self|Self|static|struct|super|trait|true|type|unsafe|use|where|while|async|await";
+  var LANGS = {
+    rust: {
+      re: new RegExp(
+        "(\\/\\/[^\\n]*)|(\"(?:[^\"\\\\\\n]|\\\\.)*\")|(#!?\\[[^\\]\\n]*\\])|('[A-Za-z_][A-Za-z0-9_]*(?!'))|\\b([a-z_][A-Za-z0-9_]*!)|\\b(" + RUST_KW + ")\\b|\\b([A-Z][A-Za-z0-9_]*)\\b|\\b(\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[iu](?:8|16|32|64|size)|f32|f64)?)\\b",
+        "g"),
+      classes: ["c", "s", "a", "a", "f", "k", "t", "n"]
+    },
+    toml: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|(^\s*\[+[^\]\n]*\]+)|\b(true|false)\b|(^[A-Za-z0-9_.-]+(?=\s*=))/gm,
+      classes: ["c", "s", "t", "k", "f"]
+    },
+    sh: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'[^'\n]*')|(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?)/g,
+      classes: ["c", "s", "n"]
+    },
+    json: {
+      re: /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g,
+      classes: ["c", "s", "n", "k"]
+    },
+    tape: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|^\s*(Output|Require|Set|Type|Enter|Escape|Sleep|Hide|Show|Down|Up|Left|Right|Space|Backspace|Tab|Ctrl\+\S+)\b|\b(\d+(?:\.\d+)?(?:ms|s)?)\b/gm,
+      classes: ["c", "s", "k", "n"]
+    }
+  };
+  /* Rainbow columns for csv/tsv/ssv/psv snippets — the same trick the
+     tree-sitter grammar plays, including the mini dialect sniff. */
+  function paintCsv(src) {
+    var counts = { ",": 0, ";": 0, "|": 0, "\t": 0 };
+    var lines = src.split("\n");
+    var first = "";
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() !== "") { first = lines[i]; break; }
+    }
+    var inQ = false;
+    for (var j = 0; j < first.length; j++) {
+      var c = first[j];
+      if (c === '"') inQ = !inQ;
+      else if (!inQ && counts.hasOwnProperty(c)) counts[c]++;
+    }
+    var delim = ",", best = 0;
+    [",", "\t", ";", "|"].forEach(function (d) {
+      if (counts[d] > best) { best = counts[d]; delim = d; }
+    });
+    return lines.map(function (line) {
+      var out = "", col = 0, cell = "", q = false;
+      var flush = function () {
+        out += '<span class="hl-col' + (col % 7) + '">' + esc(cell) + "</span>";
+        cell = "";
+      };
+      for (var k = 0; k < line.length; k++) {
+        var ch = line[k];
+        /* Curly quotes guard doc annotations the same way real quotes guard cells. */
+        if (ch === '"' || ch === '\u201c' || ch === '\u201d') { q = !q; cell += ch; }
+        else if (!q && ch === delim) {
+          flush();
+          out += '<span class="hl-dim">' + esc(ch) + "</span>";
+          col++;
+        } else { cell += ch; }
+      }
+      flush();
+      return out;
+    }).join("\n");
+  }
+  try {
+    document.querySelectorAll("pre[data-lang]").forEach(function (pre) {
+      var lang = pre.getAttribute("data-lang");
+      var code = pre.querySelector("code") || pre;
+      var src = code.textContent;
+      if (lang === "csv" || lang === "tsv" || lang === "ssv" || lang === "psv") {
+        code.innerHTML = paintCsv(src);
+      } else if (LANGS[lang]) {
+        code.innerHTML = paint(src, LANGS[lang].re, LANGS[lang].classes);
+      }
+    });
+  } catch (err) { /* plain text is fine */ }
+})();
+</script>
+</body>
+</html>

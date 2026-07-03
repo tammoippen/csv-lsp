@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quickstart · csv-lsp docs</title>
+<style>
+/* csv-lsp documentation — shared inline style.
+   Duplicated verbatim in every page so each file stays self-contained;
+   if you change it, change it in all pages (see contributing.html#docs). */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --inset: #eef1f4;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #0969da;
+  --accent-bg: #ddf4ff;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --err: #cf222e;
+  --hl-k: #cf222e; --hl-s: #0a3069; --hl-c: #6e7781; --hl-t: #953800;
+  --hl-f: #8250df; --hl-n: #0550ae; --hl-a: #116329; --hl-dim: #6e7781;
+  --col-0: #cf222e; --col-1: #bc4c00; --col-2: #7d4e00; --col-3: #116329;
+  --col-4: #0550ae; --col-5: #6639ba; --col-6: #99286e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --inset: #1c2129;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --border: #30363d;
+    --accent: #4493f8;
+    --accent-bg: #121d2f;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --hl-k: #ff7b72; --hl-s: #a5d6ff; --hl-c: #8b949e; --hl-t: #ffa657;
+    --hl-f: #d2a8ff; --hl-n: #79c0ff; --hl-a: #7ee787; --hl-dim: #8b949e;
+    --col-0: #ff7b72; --col-1: #f0883e; --col-2: #d29922; --col-3: #3fb950;
+    --col-4: #58a6ff; --col-5: #bc8cff; --col-6: #f778ba;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+}
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+header::after {
+  content: ""; display: block; height: 2px;
+  background: linear-gradient(90deg, var(--col-0), var(--col-1), var(--col-3), var(--col-4), var(--col-5));
+}
+.header-inner {
+  max-width: 60rem; margin: 0 auto; padding: 0.65rem 1.25rem;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.5rem;
+}
+.brand { font-weight: 700; font-size: 1.05rem; color: var(--fg); text-decoration: none; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 400; margin-left: 0.45rem; }
+header nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; font-size: 0.95rem; }
+header nav a { color: var(--muted); text-decoration: none; padding: 0.1rem 0; }
+header nav a:hover { color: var(--fg); }
+header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+footer {
+  max-width: 60rem; margin: 0 auto; padding: 1.25rem;
+  color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border);
+}
+footer a { color: inherit; }
+h1 { font-size: 1.9rem; line-height: 1.25; letter-spacing: -0.02em; margin: 0.8rem 0 0.3rem; }
+p.lead { font-size: 1.1rem; color: var(--muted); margin-top: 0.2rem; }
+h2 { font-size: 1.45rem; letter-spacing: -0.01em; margin: 2.6rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1.15rem; margin: 1.9rem 0 0.5rem; }
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; }
+h2 a.anchor, h3 a.anchor { color: inherit; text-decoration: none; }
+h2 a.anchor:hover::after, h3 a.anchor:hover::after { content: " #"; color: var(--muted); }
+a { color: var(--accent); }
+li { margin: 0.25rem 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+strong { font-weight: 650; }
+code { background: var(--inset); border-radius: 5px; padding: 0.12em 0.35em; font-size: 0.86em; }
+pre {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 0.9rem 0;
+}
+pre code { background: none; border-radius: 0; padding: 0; font-size: 0.86rem; display: block; }
+pre[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute; top: 0.35rem; right: 0.7rem;
+  font-size: 0.68rem; color: var(--muted); font-family: inherit;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+kbd {
+  display: inline-block; padding: 0.08em 0.45em; font-size: 0.82em;
+  background: var(--surface); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 5px;
+}
+.hl-k { color: var(--hl-k); } .hl-s { color: var(--hl-s); } .hl-c { color: var(--hl-c); font-style: italic; }
+.hl-t { color: var(--hl-t); } .hl-f { color: var(--hl-f); } .hl-n { color: var(--hl-n); }
+.hl-a { color: var(--hl-a); } .hl-dim { color: var(--hl-dim); }
+.hl-col0 { color: var(--col-0); } .hl-col1 { color: var(--col-1); } .hl-col2 { color: var(--col-2); }
+.hl-col3 { color: var(--col-3); } .hl-col4 { color: var(--col-4); } .hl-col5 { color: var(--col-5); }
+.hl-col6 { color: var(--col-6); }
+.tablewrap { overflow-x: auto; margin: 0.9rem 0; }
+table { border-collapse: collapse; font-size: 0.92rem; min-width: 60%; }
+th, td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; vertical-align: top; }
+th { background: var(--surface); }
+.note, .tip, .warn, .concept {
+  border: 1px solid var(--border); border-left-width: 4px;
+  border-radius: 6px; padding: 0.7rem 1rem; margin: 1rem 0;
+  background: var(--surface);
+}
+.note { border-left-color: var(--accent); }
+.tip { border-left-color: var(--ok); }
+.warn { border-left-color: var(--warn); }
+.concept { border-left-color: var(--hl-t); }
+.note > :first-child, .tip > :first-child, .warn > :first-child, .concept > :first-child { margin-top: 0.1rem; }
+.note > :last-child, .tip > :last-child, .warn > :last-child, .concept > :last-child { margin-bottom: 0.1rem; }
+.callout-label {
+  display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+}
+.concept .callout-label { color: var(--hl-t); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 0.9rem; margin: 1.2rem 0; }
+.card {
+  display: block; border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.9rem 1rem; background: var(--surface);
+  color: inherit; text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.card:hover { border-color: var(--accent); }
+.card h3 { margin: 0 0 0.3rem; font-size: 1.02rem; color: var(--accent); }
+.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.card .card-num { float: right; color: var(--muted); font-size: 0.8rem; }
+figure.diagram { margin: 1.2rem 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption, figure.gif figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; text-align: center; }
+.d-box { fill: var(--surface); stroke: var(--border); }
+.d-box2 { fill: var(--accent-bg); stroke: var(--accent); }
+.d-txt { fill: var(--fg); font: 13px system-ui, sans-serif; }
+.d-sub { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+.d-mono { fill: var(--fg); font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-mono-sm { fill: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-edge { stroke: var(--muted); fill: none; stroke-width: 1.3; }
+.d-edge-accent { stroke: var(--accent); fill: none; stroke-width: 1.5; }
+.d-arrow { fill: var(--muted); }
+.d-arrow-accent { fill: var(--accent); }
+figure.gif { margin: 1.2rem 0; }
+figure.gif img {
+  display: block; max-width: 100%; border: 1px solid var(--border); border-radius: 10px;
+}
+figure.gif.missing img { display: none; }
+figure.gif .placeholder { display: none; }
+figure.gif.missing .placeholder {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 1px dashed var(--border); border-radius: 10px;
+  padding: 2.2rem 1rem; color: var(--muted); font-size: 0.9rem;
+  background: var(--surface);
+}
+details { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin: 0.9rem 0; background: var(--surface); }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+.prevnext {
+  display: flex; justify-content: space-between; gap: 1rem;
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+.prevnext a { text-decoration: none; }
+.prevnext .dir { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pill {
+  display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.78rem; background: var(--inset); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.05rem 0.55rem;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a class="brand" href="index.html">csv-lsp<span>docs</span></a>
+    <nav>
+      <a href="quickstart.html" aria-current="page">Quickstart</a>
+      <a href="features.html">Features</a>
+      <a href="lsp.html">LSP</a>
+      <a href="parser.html">Parser</a>
+      <a href="testing.html">Testing</a>
+      <a href="contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<h1>Quickstart</h1>
+<p class="lead">The bare minimum to get csv-lsp running: install the binary, tell your
+editor about it, and take the sixty-second tour.</p>
+
+<h2 id="what"><a class="anchor" href="#what">What you get</a></h2>
+
+<ul>
+  <li><strong>Live diagnostics</strong> — rows with missing/extra cells, unclosed quotes, stray
+      quotes, text after a closing quote. Exact spans, updated on every keystroke.</li>
+  <li><strong>Code actions</strong> (<kbd>Space</kbd><kbd>a</kbd> in Helix) — pad short rows, align/compact
+      columns, reinterpret or convert the dialect, quote cells/columns, add/delete columns.</li>
+  <li><strong>Formatting</strong> (<code>:format</code>) — align columns so delimiters line up; idempotent, so
+      format-on-save is safe.</li>
+  <li><strong>Column selection</strong> (<kbd>Space</kbd><kbd>h</kbd>) — one cursor per cell of the column
+      under your cursor.</li>
+  <li>Unicode-aware alignment, BOM/CRLF/final-newline preservation, multi-line quoted cells,
+      and four dialects: CSV, TSV, SSV (semicolon), PSV (pipe).</li>
+</ul>
+
+<p>The <a href="features.html">Features page</a> walks through each of these with examples and GIFs.</p>
+
+<h2 id="install"><a class="anchor" href="#install">Install</a></h2>
+
+<pre data-lang="sh"><code>git clone https://github.com/tammoippen/csv-lsp
+cd csv-lsp
+cargo install --path .</code></pre>
+
+<p>Requires a stable Rust toolchain (edition 2024; the manifest declares
+<code>rust-version = "1.85"</code>). The binary lands in <code>~/.cargo/bin/csv-lsp</code> — make sure that
+directory is on your <code>PATH</code>, then check:</p>
+
+<pre data-lang="sh"><code>csv-lsp --help 2>/dev/null; which csv-lsp   # any output path means it is installed</code></pre>
+
+<div class="concept">
+<span class="callout-label">Rust concept · cargo install</span>
+<p><code>cargo install --path .</code> builds the crate’s <em>binary target</em> in release mode and copies
+it into <code>~/.cargo/bin</code>. The project commits its <code>Cargo.lock</code>, and <code>cargo install</code>
+respects a committed lockfile for path installs — so you build exactly the dependency
+versions the repository was tested with. There is nothing else to deploy: an LSP server
+is just an executable that reads stdin and writes stdout.</p>
+</div>
+
+<h2 id="helix"><a class="anchor" href="#helix">Helix setup</a></h2>
+
+<p>Add this to <code>~/.config/helix/languages.toml</code>. It registers the server and the four
+file types; nothing else is required for diagnostics, code actions and <code>:format</code>:</p>
+
+<pre data-lang="toml"><code>[language-server.csv-lsp]
+command = "csv-lsp"
+
+[[language]]
+name = "csv"
+scope = "text.csv"
+file-types = ["csv"]
+language-servers = ["csv-lsp"]
+auto-format = false            # true = align on every save
+
+[[language]]
+name = "tsv"
+scope = "text.tsv"
+file-types = ["tsv", "tab"]
+language-servers = ["csv-lsp"]
+grammar = "csv"                # tsv/ssv/psv reuse the csv grammar
+auto-format = false
+
+[[language]]
+name = "ssv"
+scope = "text.ssv"
+file-types = ["ssv"]
+language-servers = ["csv-lsp"]
+grammar = "csv"
+auto-format = false
+
+[[language]]
+name = "psv"
+scope = "text.psv"
+file-types = ["psv"]
+language-servers = ["csv-lsp"]
+grammar = "csv"
+auto-format = false</code></pre>
+
+<p>Verify with <code>hx --health csv</code> — the <em>language server</em> line should show
+<code>csv-lsp</code> as found.</p>
+
+<div class="tip">
+<span class="callout-label">Optional · rainbow columns</span>
+<p>Column colors come from a tree-sitter grammar, not from the LSP server (Helix
+highlights exclusively through tree-sitter). This repository ships an improved grammar
+in <code>tree-sitter-rainbow-csv/</code> that fixes empty-cell and TSV handling. Setup takes two
+extra steps — see <a href="features.html#rainbow">Features → Rainbow columns</a>.</p>
+</div>
+
+<h2 id="tour"><a class="anchor" href="#tour">The sixty-second tour</a></h2>
+
+<p>Create a deliberately broken file and open it:</p>
+
+<pre data-lang="sh"><code>cat &gt; demo.csv &lt;&lt;'EOF'
+id,name,qty,price
+1,bolt,100,0.10
+2,nut,250
+3,"washer,steel",75,0.05
+4,screw
+EOF
+hx demo.csv</code></pre>
+
+<ol>
+  <li><strong>Diagnostics appear immediately.</strong> Rows 3 and 5 are short — each gets an error at
+      its end: <span class="pill">row-missing-cells</span> <em>“row has 3 cells, expected 4”</em>.
+      Press <kbd>Space</kbd><kbd>d</kbd> for the diagnostic picker, or hop with <kbd>]</kbd><kbd>d</kbd> /
+      <kbd>[</kbd><kbd>d</kbd>.</li>
+  <li><strong>Fix one row.</strong> Cursor on the <code>2,nut,250</code> row, <kbd>Space</kbd><kbd>a</kbd>, pick
+      <em>Pad row with 1 empty cell</em>. The row becomes <code>2,nut,250,</code> — a trailing comma is an
+      empty fourth cell. Or pick <em>Pad all short rows (2)</em> to repair the whole file at once.</li>
+  <li><strong>Align.</strong> <code>:format</code> pads cells with spaces so the delimiters line up:
+<pre data-lang="csv"><code>id,name          ,qty,price
+1 ,bolt          ,100,0.10
+2 ,nut           ,250,
+3 ,"washer,steel",75 ,0.05
+4 ,screw         ,   ,</code></pre>
+      The comma inside <code>"washer,steel"</code> is quoted content, not a delimiter — the parser
+      knows the difference.</li>
+  <li><strong>Compact.</strong> <kbd>Space</kbd><kbd>a</kbd> → <em>Compact columns</em> strips the padding again,
+      byte-for-byte back to the compact form. Padding is layout, never data.</li>
+  <li><strong>Select a column.</strong> Cursor anywhere in the <code>name</code> column, <kbd>Space</kbd><kbd>h</kbd> —
+      one selection per cell. Type <kbd>c</kbd> and every cell of the column changes at once.</li>
+</ol>
+
+<h2 id="dialects"><a class="anchor" href="#dialects">Dialects and detection</a></h2>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>Dialect</th><th>Delimiter</th><th>Extensions</th><th>Typical origin</th></tr></thead>
+  <tbody>
+    <tr><td>csv</td><td><code>,</code></td><td><code>.csv</code></td><td>the default everywhere</td></tr>
+    <tr><td>tsv</td><td>tab</td><td><code>.tsv</code>, <code>.tab</code></td><td>database dumps, spreadsheets</td></tr>
+    <tr><td>ssv</td><td><code>;</code></td><td><code>.ssv</code></td><td>European-locale exports (<code>,</code> is the decimal separator)</td></tr>
+    <tr><td>psv</td><td><code>|</code></td><td><code>.psv</code></td><td>database and log exports</td></tr>
+  </tbody>
+</table></div>
+
+<p>The dialect is resolved <strong>once, when a file is opened</strong>, with this precedence:</p>
+
+<ol>
+  <li>the LSP <code>languageId</code> the editor sends (Helix: the <code>name</code> of the matching
+      <code>[[language]]</code> entry),</li>
+  <li>the file extension,</li>
+  <li>content sniffing — delimiters counted outside quotes in the first non-blank line,
+      ties favor comma,</li>
+  <li>CSV as the final default.</li>
+</ol>
+
+<p>For files whose extension lies (a <code>.csv</code> that is actually semicolon-separated), use
+<em>Reinterpret as SSV</em> (parse differently, zero text changes, session-scoped) or
+<em>Convert to CSV</em> (rewrite the text, quoting adapts). Details in
+<a href="features.html#reinterpret">Features → Reinterpret</a> and <a href="features.html#convert">→ Convert</a>.</p>
+
+<h2 id="diagnostics-reference"><a class="anchor" href="#diagnostics-reference">Diagnostics reference</a></h2>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>Code</th><th>Meaning</th><th>Severity</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill">row-missing-cells</span></td><td>fewer cells than the header</td><td>error</td><td>quickfix: pad with empty cells</td></tr>
+    <tr><td><span class="pill">row-extra-cells</span></td><td>more cells than the header</td><td>error</td><td>manual (deleting data is not auto-fixed)</td></tr>
+    <tr><td><span class="pill">unclosed-quote</span></td><td>quoted cell never closed</td><td>error</td><td>manual</td></tr>
+    <tr><td><span class="pill">stray-quote</span></td><td>bare <code>"</code> in an unquoted cell</td><td>warning</td><td>quote the cell or double the quote</td></tr>
+    <tr><td><span class="pill">text-after-quote</span></td><td>text after a closing quote</td><td>error</td><td>manual</td></tr>
+  </tbody>
+</table></div>
+
+<p>Two conventions worth knowing, because they explain most “why is there no error here?”
+moments: the <strong>header is the first non-blank row</strong> and its cell count is the column
+contract; and rows the parser could not fully understand (quoting errors) are
+<strong>excluded from column checks</strong> — one unclosed quote must not cascade into a wall of
+ragged-row errors.</p>
+
+<h2 id="logging"><a class="anchor" href="#logging">Logging</a></h2>
+
+<p>stdout is the protocol channel, so logs go to <strong>stderr</strong>, gated by an environment
+variable:</p>
+
+<pre data-lang="sh"><code>CSV_LSP_LOG=1 hx -v data.csv    # then check ~/.cache/helix/helix.log</code></pre>
+
+<h2 id="other-editors"><a class="anchor" href="#other-editors">Other editors</a></h2>
+
+<p>csv-lsp is a standard LSP server over stdio — any client works. You need to tell your
+editor two things: run the command <code>csv-lsp</code>, and attach it to the file types
+<code>csv</code>/<code>tsv</code>/<code>ssv</code>/<code>psv</code> (sending one of those strings as the <code>languageId</code> picks the
+dialect directly; otherwise the file extension decides). For Neovim that is an
+<code>vim.lsp.start</code> call in a <code>FileType</code> autocommand; for VS Code you need any
+generic-LSP-client extension. The server negotiates its position encoding automatically
+(UTF-8 preferred, UTF-16 fallback) and requires no configuration.</p>
+
+<h2 id="troubleshooting"><a class="anchor" href="#troubleshooting">Troubleshooting</a></h2>
+
+<ul>
+  <li><strong>No diagnostics at all</strong> — run <code>hx --health csv</code>; if the server binary is not
+      found, check that <code>~/.cargo/bin</code> is on the <code>PATH</code> Helix sees. Then
+      <code>CSV_LSP_LOG=1 hx -v file.csv</code> and look for <code>initialized with …</code> in the Helix log.</li>
+  <li><strong>Everything is one column / diagnostics look wrong</strong> — the extension probably lies
+      about the delimiter. <kbd>Space</kbd><kbd>a</kbd> → <em>Reinterpret as …</em> fixes the session;
+      renaming or converting the file fixes it durably.</li>
+  <li><strong>Rainbow colors are off or missing</strong> — colors come from the tree-sitter grammar,
+      not the server; see <a href="features.html#rainbow">Features → Rainbow columns</a> for the
+      grammar override and its one cosmetic caveat.</li>
+  <li><strong>Worried about format-on-save loops</strong> — don’t be: formatting an already-aligned
+      file returns <em>no</em> edits by construction, so <code>auto-format = true</code> is safe.</li>
+</ul>
+
+<nav class="prevnext">
+  <a href="index.html"><span class="dir">Previous</span>← Overview</a>
+  <a href="features.html"><span class="dir">Next</span>Features →</a>
+</nav>
+
+</main>
+<footer>csv-lsp · MIT · <a href="https://github.com/tammoippen/csv-lsp">github.com/tammoippen/csv-lsp</a></footer>
+<script>
+/* Tiny syntax highlighter — progressive enhancement; the pages read fine as
+   plain text without it. One alternation regex per language; the first
+   defined capture group decides the color. Duplicated in every page. */
+(function () {
+  "use strict";
+  var esc = function (s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+  function paint(src, re, classes) {
+    var out = "", last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(src)) !== null) {
+      var cls = null;
+      for (var i = 1; i < m.length; i++) {
+        if (m[i] !== undefined) { cls = classes[i - 1]; break; }
+      }
+      out += esc(src.slice(last, m.index));
+      out += cls ? '<span class="hl-' + cls + '">' + esc(m[0]) + "</span>" : esc(m[0]);
+      last = m.index + m[0].length;
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    return out + esc(src.slice(last));
+  }
+  var RUST_KW = "as|break|const|continue|crate|dyn|else|enum|extern|false|fn|for|if|impl|in|let|loop|match|mod|move|mut|pub|ref|return|self|Self|static|struct|super|trait|true|type|unsafe|use|where|while|async|await";
+  var LANGS = {
+    rust: {
+      re: new RegExp(
+        "(\\/\\/[^\\n]*)|(\"(?:[^\"\\\\\\n]|\\\\.)*\")|(#!?\\[[^\\]\\n]*\\])|('[A-Za-z_][A-Za-z0-9_]*(?!'))|\\b([a-z_][A-Za-z0-9_]*!)|\\b(" + RUST_KW + ")\\b|\\b([A-Z][A-Za-z0-9_]*)\\b|\\b(\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[iu](?:8|16|32|64|size)|f32|f64)?)\\b",
+        "g"),
+      classes: ["c", "s", "a", "a", "f", "k", "t", "n"]
+    },
+    toml: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|(^\s*\[+[^\]\n]*\]+)|\b(true|false)\b|(^[A-Za-z0-9_.-]+(?=\s*=))/gm,
+      classes: ["c", "s", "t", "k", "f"]
+    },
+    sh: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'[^'\n]*')|(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?)/g,
+      classes: ["c", "s", "n"]
+    },
+    json: {
+      re: /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g,
+      classes: ["c", "s", "n", "k"]
+    },
+    tape: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|^\s*(Output|Require|Set|Type|Enter|Escape|Sleep|Hide|Show|Down|Up|Left|Right|Space|Backspace|Tab|Ctrl\+\S+)\b|\b(\d+(?:\.\d+)?(?:ms|s)?)\b/gm,
+      classes: ["c", "s", "k", "n"]
+    }
+  };
+  /* Rainbow columns for csv/tsv/ssv/psv snippets — the same trick the
+     tree-sitter grammar plays, including the mini dialect sniff. */
+  function paintCsv(src) {
+    var counts = { ",": 0, ";": 0, "|": 0, "\t": 0 };
+    var lines = src.split("\n");
+    var first = "";
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() !== "") { first = lines[i]; break; }
+    }
+    var inQ = false;
+    for (var j = 0; j < first.length; j++) {
+      var c = first[j];
+      if (c === '"') inQ = !inQ;
+      else if (!inQ && counts.hasOwnProperty(c)) counts[c]++;
+    }
+    var delim = ",", best = 0;
+    [",", "\t", ";", "|"].forEach(function (d) {
+      if (counts[d] > best) { best = counts[d]; delim = d; }
+    });
+    return lines.map(function (line) {
+      var out = "", col = 0, cell = "", q = false;
+      var flush = function () {
+        out += '<span class="hl-col' + (col % 7) + '">' + esc(cell) + "</span>";
+        cell = "";
+      };
+      for (var k = 0; k < line.length; k++) {
+        var ch = line[k];
+        /* Curly quotes guard doc annotations the same way real quotes guard cells. */
+        if (ch === '"' || ch === '\u201c' || ch === '\u201d') { q = !q; cell += ch; }
+        else if (!q && ch === delim) {
+          flush();
+          out += '<span class="hl-dim">' + esc(ch) + "</span>";
+          col++;
+        } else { cell += ch; }
+      }
+      flush();
+      return out;
+    }).join("\n");
+  }
+  try {
+    document.querySelectorAll("pre[data-lang]").forEach(function (pre) {
+      var lang = pre.getAttribute("data-lang");
+      var code = pre.querySelector("code") || pre;
+      var src = code.textContent;
+      if (lang === "csv" || lang === "tsv" || lang === "ssv" || lang === "psv") {
+        code.innerHTML = paintCsv(src);
+      } else if (LANGS[lang]) {
+        code.innerHTML = paint(src, LANGS[lang].re, LANGS[lang].classes);
+      }
+    });
+  } catch (err) { /* plain text is fine */ }
+})();
+</script>
+</body>
+</html>

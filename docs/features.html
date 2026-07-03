@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Features · csv-lsp docs</title>
+<style>
+/* csv-lsp documentation — shared inline style.
+   Duplicated verbatim in every page so each file stays self-contained;
+   if you change it, change it in all pages (see contributing.html#docs). */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --inset: #eef1f4;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #0969da;
+  --accent-bg: #ddf4ff;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --err: #cf222e;
+  --hl-k: #cf222e; --hl-s: #0a3069; --hl-c: #6e7781; --hl-t: #953800;
+  --hl-f: #8250df; --hl-n: #0550ae; --hl-a: #116329; --hl-dim: #6e7781;
+  --col-0: #cf222e; --col-1: #bc4c00; --col-2: #7d4e00; --col-3: #116329;
+  --col-4: #0550ae; --col-5: #6639ba; --col-6: #99286e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --inset: #1c2129;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --border: #30363d;
+    --accent: #4493f8;
+    --accent-bg: #121d2f;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --hl-k: #ff7b72; --hl-s: #a5d6ff; --hl-c: #8b949e; --hl-t: #ffa657;
+    --hl-f: #d2a8ff; --hl-n: #79c0ff; --hl-a: #7ee787; --hl-dim: #8b949e;
+    --col-0: #ff7b72; --col-1: #f0883e; --col-2: #d29922; --col-3: #3fb950;
+    --col-4: #58a6ff; --col-5: #bc8cff; --col-6: #f778ba;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+}
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+header::after {
+  content: ""; display: block; height: 2px;
+  background: linear-gradient(90deg, var(--col-0), var(--col-1), var(--col-3), var(--col-4), var(--col-5));
+}
+.header-inner {
+  max-width: 60rem; margin: 0 auto; padding: 0.65rem 1.25rem;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.5rem;
+}
+.brand { font-weight: 700; font-size: 1.05rem; color: var(--fg); text-decoration: none; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 400; margin-left: 0.45rem; }
+header nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; font-size: 0.95rem; }
+header nav a { color: var(--muted); text-decoration: none; padding: 0.1rem 0; }
+header nav a:hover { color: var(--fg); }
+header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+footer {
+  max-width: 60rem; margin: 0 auto; padding: 1.25rem;
+  color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border);
+}
+footer a { color: inherit; }
+h1 { font-size: 1.9rem; line-height: 1.25; letter-spacing: -0.02em; margin: 0.8rem 0 0.3rem; }
+p.lead { font-size: 1.1rem; color: var(--muted); margin-top: 0.2rem; }
+h2 { font-size: 1.45rem; letter-spacing: -0.01em; margin: 2.6rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1.15rem; margin: 1.9rem 0 0.5rem; }
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; }
+h2 a.anchor, h3 a.anchor { color: inherit; text-decoration: none; }
+h2 a.anchor:hover::after, h3 a.anchor:hover::after { content: " #"; color: var(--muted); }
+a { color: var(--accent); }
+li { margin: 0.25rem 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+strong { font-weight: 650; }
+code { background: var(--inset); border-radius: 5px; padding: 0.12em 0.35em; font-size: 0.86em; }
+pre {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 0.9rem 0;
+}
+pre code { background: none; border-radius: 0; padding: 0; font-size: 0.86rem; display: block; }
+pre[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute; top: 0.35rem; right: 0.7rem;
+  font-size: 0.68rem; color: var(--muted); font-family: inherit;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+kbd {
+  display: inline-block; padding: 0.08em 0.45em; font-size: 0.82em;
+  background: var(--surface); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 5px;
+}
+.hl-k { color: var(--hl-k); } .hl-s { color: var(--hl-s); } .hl-c { color: var(--hl-c); font-style: italic; }
+.hl-t { color: var(--hl-t); } .hl-f { color: var(--hl-f); } .hl-n { color: var(--hl-n); }
+.hl-a { color: var(--hl-a); } .hl-dim { color: var(--hl-dim); }
+.hl-col0 { color: var(--col-0); } .hl-col1 { color: var(--col-1); } .hl-col2 { color: var(--col-2); }
+.hl-col3 { color: var(--col-3); } .hl-col4 { color: var(--col-4); } .hl-col5 { color: var(--col-5); }
+.hl-col6 { color: var(--col-6); }
+.tablewrap { overflow-x: auto; margin: 0.9rem 0; }
+table { border-collapse: collapse; font-size: 0.92rem; min-width: 60%; }
+th, td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; vertical-align: top; }
+th { background: var(--surface); }
+.note, .tip, .warn, .concept {
+  border: 1px solid var(--border); border-left-width: 4px;
+  border-radius: 6px; padding: 0.7rem 1rem; margin: 1rem 0;
+  background: var(--surface);
+}
+.note { border-left-color: var(--accent); }
+.tip { border-left-color: var(--ok); }
+.warn { border-left-color: var(--warn); }
+.concept { border-left-color: var(--hl-t); }
+.note > :first-child, .tip > :first-child, .warn > :first-child, .concept > :first-child { margin-top: 0.1rem; }
+.note > :last-child, .tip > :last-child, .warn > :last-child, .concept > :last-child { margin-bottom: 0.1rem; }
+.callout-label {
+  display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+}
+.concept .callout-label { color: var(--hl-t); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 0.9rem; margin: 1.2rem 0; }
+.card {
+  display: block; border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.9rem 1rem; background: var(--surface);
+  color: inherit; text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.card:hover { border-color: var(--accent); }
+.card h3 { margin: 0 0 0.3rem; font-size: 1.02rem; color: var(--accent); }
+.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.card .card-num { float: right; color: var(--muted); font-size: 0.8rem; }
+figure.diagram { margin: 1.2rem 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption, figure.gif figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; text-align: center; }
+.d-box { fill: var(--surface); stroke: var(--border); }
+.d-box2 { fill: var(--accent-bg); stroke: var(--accent); }
+.d-txt { fill: var(--fg); font: 13px system-ui, sans-serif; }
+.d-sub { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+.d-mono { fill: var(--fg); font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-mono-sm { fill: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-edge { stroke: var(--muted); fill: none; stroke-width: 1.3; }
+.d-edge-accent { stroke: var(--accent); fill: none; stroke-width: 1.5; }
+.d-arrow { fill: var(--muted); }
+.d-arrow-accent { fill: var(--accent); }
+figure.gif { margin: 1.2rem 0; }
+figure.gif img {
+  display: block; max-width: 100%; border: 1px solid var(--border); border-radius: 10px;
+}
+figure.gif.missing img { display: none; }
+figure.gif .placeholder { display: none; }
+figure.gif.missing .placeholder {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 1px dashed var(--border); border-radius: 10px;
+  padding: 2.2rem 1rem; color: var(--muted); font-size: 0.9rem;
+  background: var(--surface);
+}
+details { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin: 0.9rem 0; background: var(--surface); }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+.prevnext {
+  display: flex; justify-content: space-between; gap: 1rem;
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+.prevnext a { text-decoration: none; }
+.prevnext .dir { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pill {
+  display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.78rem; background: var(--inset); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.05rem 0.55rem;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a class="brand" href="index.html">csv-lsp<span>docs</span></a>
+    <nav>
+      <a href="quickstart.html">Quickstart</a>
+      <a href="features.html" aria-current="page">Features</a>
+      <a href="lsp.html">LSP</a>
+      <a href="parser.html">Parser</a>
+      <a href="testing.html">Testing</a>
+      <a href="contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<h1>Features</h1>
+<p class="lead">Every feature, one by one: what it does in the editor, how it works
+inside, and the edge rules. Each section has a GIF slot plus the script to record it —
+see <a href="#recording">Recording the GIFs</a>.</p>
+
+<h2 id="anatomy"><a class="anchor" href="#anatomy">How a feature is built</a></h2>
+
+<p>All features share one shape. The server parses the document into a span-rich
+<code>Table</code> (<a href="parser.html">the parser page</a>), and features are small plugins over that
+table, collected in <code>features::Registry::standard()</code> — <strong>diagnostic rules</strong> produce
+squiggles, <strong>action providers</strong> produce entries for the code-action menu:</p>
+
+<pre data-lang="rust"><code>pub trait DiagnosticRule {
+    fn name(&amp;self) -&gt; &amp;'static str;
+    fn check(&amp;self, text: &amp;str, table: &amp;Table) -&gt; Vec&lt;Diag&gt;;
+}
+pub trait ActionProvider {
+    fn name(&amp;self) -&gt; &amp;'static str;
+    fn actions(&amp;self, ctx: &amp;ActionContext) -&gt; Vec&lt;Action&gt;;
+}</code></pre>
+
+<p>Three ground rules apply to every feature and explain most edge behavior:</p>
+<ul>
+  <li><strong>The header is the column contract.</strong> The first non-blank row defines the expected
+      cell count; blank lines are separators — legal, never padded, never counted.</li>
+  <li><strong>The verbatim principle.</strong> Rows overlapping a parse error are excluded from column
+      checks and passed through <em>byte-for-byte</em> by every rewrite — the server never
+      reformats what the parser could not fully understand.</li>
+  <li><strong>Padding is layout, not data.</strong> Cell values are the space-trimmed content; quoted
+      cell <em>interiors</em> are never touched; space between a closing quote and the delimiter
+      (<code>"abc"  ,</code>) is tolerated because alignment produces exactly that.</li>
+</ul>
+
+<p>In Helix, <kbd>Space</kbd><kbd>a</kbd> opens the code-action menu. For a given cursor the
+server answers in a fixed order (providers run in registration order):
+<em>Pad row</em> (quickfix, preferred) → <em>Pad all short rows</em> → <em>Align columns</em> →
+<em>Compact columns</em> → <em>Reinterpret as …</em> ×3 → <em>Convert to …</em> ×3 → <em>Quote cell</em> →
+<em>Quote column</em> → <em>Add column left/right</em> → <em>Delete column</em> — each entry present only
+when applicable (clients may additionally sort preferred entries first).</p>
+
+<h2 id="diagnostics"><a class="anchor" href="#diagnostics">Diagnostics</a></h2>
+
+<p>Two diagnostic rules run over every parse, on every keystroke.</p>
+
+<p><strong>Ragged rows</strong> (<code>src/features/ragged_rows.rs</code>) checks each row’s cell count against
+the header:</p>
+
+<pre data-lang="csv"><code>id,name,qty,price
+1,bolt,100,0.10
+2,nut,250            ← row-missing-cells: “row has 3 cells, expected 4”
+3,washer,75,0.05,x   ← row-extra-cells:   “row has 5 cells, expected 4”</code></pre>
+
+<ul>
+  <li>A <em>short</em> row gets a <strong>zero-width span at its end</strong> — “cells are missing <em>here</em>” —
+      which editors render as an end-of-line marker instead of underlining innocent text.</li>
+  <li>A <em>long</em> row is underlined from its first extra cell to the row end, so the span
+      covers exactly the data that would have to go.</li>
+</ul>
+
+<p><strong>Quoting errors</strong> (<code>src/features/parse_errors.rs</code>) surface the parser’s three
+recovered error kinds one-to-one: <span class="pill">unclosed-quote</span> (error),
+<span class="pill">stray-quote</span> (warning — <code>5" bolt</code> is extremely common in real data),
+and <span class="pill">text-after-quote</span> (error). The spans come straight from the parser
+and are byte-exact: an unclosed quote underlines <em>the opening quote</em>, not the whole
+rest of the file. Recovery details are on the
+<a href="parser.html#recovery">parser page</a>.</p>
+
+<p>Two anti-noise rules keep broken files workable: rows that already carry a quoting
+error are skipped by the ragged-row check (one broken quote must not cascade into
+dozens of errors), and blank rows are never diagnosed.</p>
+
+<div class="concept">
+<span class="callout-label">Rust concept · shared analysis, not shared strings</span>
+<p>The short-row analysis lives in one function used by <em>both</em> the diagnostic and the
+quickfix below — <code>short_rows(&amp;Table) -&gt; Vec&lt;ShortRow&gt;</code> — so the squiggle and its fix
+can never drift apart. The diagnostic also carries a structured payload built with the
+<code>serde_json::json!</code> macro (<code>{"row": 1, "missing": 2}</code>), but that payload is
+<em>write-only</em>: providers recompute everything from the freshly parsed table rather than
+trusting what a client echoes back.</p>
+</div>
+
+<figure class="gif" id="gif-diagnostics">
+  <img src="gifs/diagnostics.gif" alt="Helix showing csv-lsp diagnostics appear and update while editing a ragged CSV file"
+       loading="lazy" onerror="this.closest('figure').classList.add('missing')">
+  <div class="placeholder">gifs/diagnostics.gif — not recorded yet · tape: <code>docs/gifs/tapes/diagnostics.tape</code> · <a href="#recording">how to record</a></div>
+  <figcaption>Diagnostics appear as you type and disappear as rows are completed.</figcaption>
+</figure>
+
+<details>
+<summary>Recording script — diagnostics.gif (~20 s)</summary>
+<p><strong>Automated:</strong> <code>vhs docs/gifs/tapes/diagnostics.tape</code> (run from the repository root).</p>
+<p><strong>Manual, if you prefer to drive it yourself:</strong></p>
+<ol>
+  <li>Open the ragged sample: <code>hx /tmp/demo.csv</code> (copy of
+      <code>docs/gifs/samples/inventory.csv</code>) — two rows are short; squiggles are already
+      visible at their line ends.</li>
+  <li>Press <kbd>Space</kbd><kbd>d</kbd> to show the diagnostic picker with both messages;
+      <kbd>Esc</kbd> to close.</li>
+  <li>Navigate to the <code>3,washer</code> row end (<code>gg</code>, <code>3j</code>, <code>$</code>), append <code>,75,0.05</code>
+      (<kbd>a</kbd> … <kbd>Esc</kbd>) — watch the diagnostic vanish the moment the row is complete.</li>
+  <li>Pause a beat on the clean state, then quit without saving (<code>:q!</code>).</li>
+</ol>
+<p><em>Show:</em> live update on every keystroke; the zero-width marker sits at the row end, not
+under data.</p>
+</details>
+
+<h2 id="pad"><a class="anchor" href="#pad">Quickfix: pad short rows</a></h2>
+
+<p>The fix attached to <span class="pill">row-missing-cells</span>
+(<code>src/features/pad_rows.rs</code>): insert the missing empty cells at the row end. Under a
+4-column header, <code>x,y</code> becomes <code>x,y,,</code> — two inserted delimiters <em>are</em> two empty
+cells. Two flavors:</p>
+
+<ul>
+  <li><strong>Pad row with N empty cells</strong> — a <code>quickfix</code> for the row under the cursor, marked
+      <em>preferred</em> so editors can apply it with one keystroke.</li>
+  <li><strong>Pad all short rows (N)</strong> — a <code>source.fixAll</code> action offered wherever the cursor
+      is; its edits are one insert per short row, in document order.</li>
+</ul>
+
+<p>The insert lands at <code>row.span.end</code> — after any alignment padding, which the parser
+treats as part of the last cell — and uses the document’s own delimiter, so the same
+code pads TSV rows with tabs. The header itself is never padded (it <em>defines</em> the
+contract), and rows with quoting errors are skipped (fix the quoting first).</p>
+
+<div class="concept">
+<span class="callout-label">Rust concept · edits as data</span>
+<p>An action’s edits are plain values: <code>Vec&lt;(Span, String)&gt;</code> — replace these bytes with
+this text. An insertion is a zero-width span (<code>Span::new(end, end)</code>). Keeping edits as
+data (instead of mutating the document) means the same values can be unit-tested with
+<code>edits::apply</code>, property-tested for the LSP contract (non-overlapping, in document
+order), and converted to protocol <code>TextEdit</code>s at the server boundary.</p>
+</div>
+
+<figure class="gif" id="gif-pad">
+  <img src="gifs/pad-rows.gif" alt="Applying the pad-row quickfix and the pad-all source action in Helix"
+       loading="lazy" onerror="this.closest('figure').classList.add('missing')">
+  <div class="placeholder">gifs/pad-rows.gif — not recorded yet · tape: <code>docs/gifs/tapes/pad-rows.tape</code> · <a href="#recording">how to record</a></div>
+  <figcaption>One row via the quickfix, then the rest of the file via <em>Pad all short rows</em>.</figcaption>
+</figure>
+
+<details>
+<summary>Recording script — pad-rows.gif (~20 s)</summary>
+<p><strong>Automated:</strong> <code>vhs docs/gifs/tapes/pad-rows.tape</code></p>
+<p><strong>Manual:</strong></p>
+<ol>
+  <li>Open the copy of <code>docs/gifs/samples/inventory.csv</code>; put the cursor on the
+      <code>2,nut,250</code> row.</li>
+  <li><kbd>Space</kbd><kbd>a</kbd> — the menu opens with <em>Pad row with 1 empty cell</em> as the
+      preferred first entry. <kbd>Enter</kbd>. The row gains a trailing comma; its
+      diagnostic disappears.</li>
+  <li>Move to the header (<code>gg</code>), <kbd>Space</kbd><kbd>a</kbd> again, pick
+      <em>Pad all short rows (1)</em> — the remaining short row is repaired from a distance.</li>
+  <li>Show the clean gutter, quit with <code>:q!</code>.</li>
+</ol>
+<p><em>Show:</em> quickfix is cursor-local, fix-all works from anywhere; empty cells appear as
+trailing delimiters.</p>
+</details>
+
+<h2 id="align"><a class="anchor" href="#align">Align columns</a></h2>
+
+<p>Pad cells with spaces so the delimiters line up under the header
+(<code>src/features/align.rs</code>). Exposed twice over the <em>same</em> code path: as LSP
+<em>formatting</em> (<code>:format</code>, or on save with <code>auto-format = true</code>) and as the
+<em>Align columns</em> source action:</p>
+
+<pre data-lang="csv"><code>id,name,qty          id,name ,qty
+1,"a,b",3      ⇄     1 ,"a,b",3
+20,x,400             20,x    ,400</code></pre>
+
+<p>How it works: <code>column_widths()</code> measures every column’s maximum <em>display width</em> over
+the content of clean rows; <code>render()</code> re-emits the table padded to those widths; and
+<code>edits::minimize()</code> diffs the result against the current text into <strong>at most one small
+edit</strong> — trimming the common prefix and suffix — so the viewport doesn’t jump and the
+cursor stays put. Already aligned? <code>minimize</code> returns nothing, the action isn’t even
+offered, and formatting answers “no edits” — that idempotence is what makes
+format-on-save safe.</p>
+
+<ul>
+  <li>Widths are <em>display</em> columns, not bytes and not chars: <code>é</code> is 1 cell (2 bytes),
+      <code>名</code> is 2 cells (3 bytes), <code>😀</code> is 2 cells (4 bytes). The <code>unicode-width</code> crate
+      implements the Unicode rules (UAX #11); ambiguous-width or ZWJ-emoji cells may still
+      render off-by-one in some terminals — a documented limit.</li>
+  <li>Quoted cells participate with their quotes (<code>"a,b"</code> is width 5); their interior is
+      untouched.</li>
+  <li>A cell is padded only when another cell follows it in <em>its own</em> row: last cells stay
+      unpadded, so no row ever gains trailing whitespace.</li>
+  <li>Blank rows stay empty lines; parse-error rows pass through verbatim; mixed line
+      terminators are normalized to the file’s first one.</li>
+</ul>
+
+<div class="concept">
+<span class="callout-label">Rust concept · one renderer, many features</span>
+<p>Align, compact and dialect conversion are all <code>render(text, &amp;table, &amp;RenderOptions)</code>
+with different options — align is <code>align: Some(widths)</code>, compact is <code>align: None</code>.
+<code>RenderOptions::aligned_for</code> is built from <code>compact_for</code> using
+<em>struct update syntax</em>: <code>RenderOptions { align: Some(widths), ..Self::compact_for(table) }</code>
+— copy every other field from another instance. One code path means the round-trip
+guarantees below are properties of a single function, not a family of lookalikes.</p>
+</div>
+
+<h2 id="compact"><a class="anchor" href="#compact">Compact columns</a></h2>
+
+<p>The inverse (<code>src/features/compact.rs</code>): strip alignment padding, restoring the
+canonical machine-friendly form. Same renderer with <code>align: None</code>, same minimal-edit
+delivery, offered only when there is padding to strip.</p>
+
+<p>The pair comes with tested round-trip guarantees (see
+<a href="testing.html#invariant-map">the property suite</a>): align is idempotent, compact is
+idempotent, and <strong>compact ∘ align = compact</strong> — aligning and compacting returns you
+byte-for-byte to the compact form. Padding truly is layout: you can toggle it freely
+without ever touching data.</p>
+
+<figure class="gif" id="gif-align">
+  <img src="gifs/align-compact.gif" alt="Aligning columns with :format and compacting them again via the source action in Helix"
+       loading="lazy" onerror="this.closest('figure').classList.add('missing')">
+  <div class="placeholder">gifs/align-compact.gif — not recorded yet · tape: <code>docs/gifs/tapes/align-compact.tape</code> · <a href="#recording">how to record</a></div>
+  <figcaption><code>:format</code> aligns; <em>Compact columns</em> restores the compact form byte-for-byte.</figcaption>
+</figure>
+
+<details>
+<summary>Recording script — align-compact.gif (~20 s)</summary>
+<p><strong>Automated:</strong> <code>vhs docs/gifs/tapes/align-compact.tape</code></p>
+<p><strong>Manual:</strong></p>
+<ol>
+  <li>Open the copy of <code>docs/gifs/samples/messy.csv</code> — unaligned, with a quoted comma
+      cell and a CJK cell.</li>
+  <li>Type <code>:format</code> <kbd>Enter</kbd> — delimiters snap into columns; note the quoted
+      <code>"bolt, m3"</code> cell and the double-width <code>名前</code> cell line up correctly.</li>
+  <li>Pause. <kbd>Space</kbd><kbd>a</kbd>, pick <em>Compact columns</em> — the padding disappears
+      again.</li>
+  <li>Quit with <code>:q!</code>.</li>
+</ol>
+<p><em>Show:</em> quoted delimiters don’t split cells; CJK width handled; align ⇄ compact is a
+clean round trip.</p>
+</details>
+
+<h2 id="reinterpret"><a class="anchor" href="#reinterpret">Reinterpret as CSV/TSV/SSV/PSV</a></h2>
+
+<p>For files whose extension lies — the classic case is a <code>.csv</code> export that is actually
+semicolon-separated. Under the wrong dialect every feature misbehaves (a <code>1;2;3</code> row is
+<em>one</em> CSV cell), and no text edit can fix that: what must change is the <strong>server’s
+parsing state</strong>, not the document.</p>
+
+<p><em>Reinterpret as …</em> (<code>src/features/reinterpret.rs</code>) is therefore the one action that
+carries <strong>no edit</strong>. It carries an LSP <code>Command</code> instead: picking it makes the client
+call <code>workspace/executeCommand</code> with <code>csv-lsp.setDialect [uri, "ssv"]</code>; the server
+re-parses the document under the new dialect and republishes diagnostics — zero text
+changes. The full request/response walk is on the
+<a href="lsp.html#dataflow">LSP page</a>.</p>
+
+<ul>
+  <li>Offered for every dialect except the current one, and built from the document’s
+      <em>current</em> dialect — after one reinterpretation, the next menu reflects it.</li>
+  <li><strong>Session-scoped by design:</strong> on reopen, extension detection wins again. The durable
+      fixes are renaming the file — or converting it:</li>
+</ul>
+
+<h2 id="convert"><a class="anchor" href="#convert">Convert to CSV/TSV/SSV/PSV</a></h2>
+
+<p><em>Convert to …</em> (<code>src/features/transform.rs</code>) rewrites the text to a different
+delimiter. Changing the delimiter changes which cells need quotes, and the renderer’s
+<code>QuotePolicy::PreserveOrRequired</code> handles exactly that:</p>
+
+<pre data-lang="csv"><code>artikel;preis          artikel,preis
+bolzen;1,50     →      bolzen,"1,50"     ← the decimal comma must be protected in CSV</code></pre>
+
+<ul>
+  <li>Already-quoted cells are emitted verbatim — they are protected under any delimiter.</li>
+  <li>A clean unquoted cell gains quotes exactly when its content contains the <em>target</em>
+      delimiter. (It can never contain quotes or newlines — those rows carry parse errors,
+      and files with parse errors offer <strong>no conversions at all</strong>: their error rows would
+      pass through verbatim with old delimiters, producing a mixed-dialect file. Fix
+      quoting first.)</li>
+  <li>Conversion emits the compact form — padding was layout for the <em>old</em> column widths —
+      so re-align afterwards if you like. Renaming the file to match is your follow-up.</li>
+</ul>
+
+<p><strong>The dialect flips when — and only when — you apply it.</strong> The action is a text edit;
+the server cannot know whether you picked it or dismissed the menu. So when answering
+the code-action request it remembers <code>(converted text, target dialect)</code> per document;
+if the next <code>didChange</code> delivers exactly that text, the document adopts the new
+dialect for reparsing. Dismissed offers cost nothing; manual edits never flip the
+dialect by accident.</p>
+
+<figure class="gif" id="gif-reinterpret">
+  <img src="gifs/reinterpret-convert.gif" alt="Reinterpreting a mislabeled semicolon file as SSV and then converting it to real CSV in Helix"
+       loading="lazy" onerror="this.closest('figure').classList.add('missing')">
+  <div class="placeholder">gifs/reinterpret-convert.gif — not recorded yet · tape: <code>docs/gifs/tapes/reinterpret-convert.tape</code> · <a href="#recording">how to record</a></div>
+  <figcaption>Reinterpret makes the diagnostics sane; convert makes the content match the extension.</figcaption>
+</figure>
+
+<details>
+<summary>Recording script — reinterpret-convert.gif (~30 s)</summary>
+<p><strong>Automated:</strong> <code>vhs docs/gifs/tapes/reinterpret-convert.tape</code></p>
+<p><strong>Manual:</strong></p>
+<ol>
+  <li>Open the copy of <code>docs/gifs/samples/preise.csv</code> — semicolon content under a
+      <code>.csv</code> name. Note: <em>no</em> diagnostics, because as CSV this parses as one column per
+      row; the missing cell in the last row is invisible.</li>
+  <li><kbd>Space</kbd><kbd>a</kbd>, pick <em>Reinterpret as SSV</em>. Instantly the short last row gets
+      its <span class="pill">row-missing-cells</span> squiggle — the server now sees three columns.</li>
+  <li>Fix the row (append <code>;250</code>), or leave it and point at the diagnostic.</li>
+  <li><kbd>Space</kbd><kbd>a</kbd>, pick <em>Convert to CSV</em> — semicolons become commas and
+      <code>1,50</code> gains quotes: <code>bolzen,"1,50"</code>. Diagnostics stay sane: the server flipped
+      the dialect with the applied edit.</li>
+  <li>Quit with <code>:q!</code>.</li>
+</ol>
+<p><em>Show:</em> the “extension lies” failure mode; reinterpret = parse change only; convert =
+text change with automatic quoting.</p>
+</details>
+
+<h2 id="quote"><a class="anchor" href="#quote">Quote cell / quote column</a></h2>
+
+<p>Wrap the cell under the cursor — or every unquoted cell of its column, header included
+— in RFC 4180 quotes (<code>src/features/quote.rs</code>; kind <code>refactor.rewrite</code>). Useful before
+pasting delimiter-ish content into cells and for defensively quoting free-text columns.</p>
+
+<pre data-lang="csv"><code>id,note                     id,"note"
+1 ,needs quoting      →     1 ,"needs quoting"      (Quote column "note")
+2 ,"already quoted"         2 ,"already quoted"     (left alone)</code></pre>
+
+<ul>
+  <li>The edit replaces the cell’s <em>content span</em> with
+      <code>encode_cell(value, dialect, force_quote: true)</code> — so alignment padding stays
+      <em>outside</em> the new quotes and layout is preserved.</li>
+  <li>Only unquoted cells on clean rows qualify: already-quoted cells would be no-ops the
+      picker must not show; blank rows have nothing to quote; parse-error rows are never
+      rewritten. A fully-quoted column offers nothing.</li>
+  <li>An all-padding cell has a zero-width content span, so quoting it yields <code>""</code> with
+      the spaces intact.</li>
+  <li>Column actions are titled with the header value — <code>Quote column "name"</code> — truncated
+      to 24 characters; a column past the header’s width falls back to <code>#N</code> (1-based, as
+      users count).</li>
+</ul>
+
+<div class="concept">
+<span class="callout-label">Rust concept · strings are UTF-8, truncate by chars</span>
+<p>The title helper truncates with <code>value.chars().take(24).collect()</code>, never
+<code>&amp;value[..24]</code> — byte-slicing a <code>String</code> at an arbitrary index panics if it lands
+inside a multi-byte character (<code>名</code> is 3 bytes). The same discipline appears
+everywhere in this codebase: byte offsets are used only where they are provably on
+<code>char</code> boundaries (see <a href="parser.html#model">the parser’s span invariant</a>).</p>
+</div>
+
+<figure class="gif" id="gif-quote">
+  <img src="gifs/quote.gif" alt="Quoting a single cell and then a whole column in Helix"
+       loading="lazy" onerror="this.closest('figure').classList.add('missing')">
+  <div class="placeholder">gifs/quote.gif — not recorded yet · tape: <code>docs/gifs/tapes/quote.tape</code> · <a href="#recording">how to record</a></div>
+  <figcaption>Quote cell, then quote the whole column — already-quoted cells are skipped.</figcaption>
+</figure>
+
+<details>
+<summary>Recording script — quote.gif (~20 s)</summary>
+<p><strong>Automated:</strong> <code>vhs docs/gifs/tapes/quote.tape</code></p>
+<p><strong>Manual:</strong></p>
+<ol>
+  <li>Open the copy of <code>docs/gifs/samples/quotes.csv</code>; cursor into the
+      <code>needs quoting</code> cell.</li>
+  <li><kbd>Space</kbd><kbd>a</kbd>, pick <em>Quote cell</em> — just this cell gains quotes; padding
+      stays outside.</li>
+  <li><kbd>Space</kbd><kbd>a</kbd> again, pick <em>Quote column "note"</em> — the header and every
+      remaining unquoted cell gain quotes; the already-quoted row is untouched.</li>
+  <li>Reopen the menu once more: the quote actions are gone (nothing left to quote).
+      Quit with <code>:q!</code>.</li>
+</ol>
+<p><em>Show:</em> padding survives outside quotes; idempotence — fully-quoted columns offer nothing.</p>
+</details>
+
+<h2 id="columns"><a class="anchor" href="#columns">Add / delete columns</a></h2>
+
+<p>Structural column editing at the cursor (<code>src/features/columns.rs</code>; kind
+<code>refactor</code>): insert an empty column left or right of the current one, or delete it
+across the whole file. Because every cell’s span excludes the delimiters around it,
+these are pure offset arithmetic:</p>
+
+<pre><code>row:      · a ·, · b ·, c            (· = alignment space)
+add left  of b:  insert "," at cells[1].span.start  →  · a ·,, · b ·, c
+add right of b:  insert "," at cells[1].span.end    →  · a ·, · b ·,, c
+delete b:        remove  cells[0].span.end .. cells[1].span.end
+                                                    →  · a ·, c</code></pre>
+
+<ul>
+  <li>One delimiter inserted at a cell boundary <em>is</em> one new empty cell — placed before
+      any leading padding (add-left) or after any trailing padding (add-right), so aligned
+      files stay tidy.</li>
+  <li>Deleting an inner column removes the cell plus its <em>preceding</em> delimiter; deleting
+      the first column takes the <em>following</em> one; the only cell of a single-column row
+      just loses its content (the row becomes a blank line).</li>
+  <li>Quoted cells are deleted wholesale — <code>"a,b"</code> counts as one cell, commas and all.</li>
+  <li>Edits cover clean rows <em>that have the column</em>: blank rows, parse-error rows and
+      shorter rows are skipped (short rows are already flagged and keep their pad
+      quickfix — guessing where their missing column “would be” helps nobody).</li>
+  <li>Because the header row is edited too, the column contract shifts coherently: a clean
+      file is still clean after add or delete, and a single editor undo restores everything.</li>
+</ul>
+
+<div class="concept">
+<span class="callout-label">Rust concept · returning iterators with lifetimes</span>
+<p>Row selection is one lazily-evaluated helper shared by all three actions and the
+column highlight below:</p>
+<pre data-lang="rust"><code>fn editable_rows&lt;'t&gt;(
+    table: &amp;'t Table,
+    error_rows: &amp;'t HashSet&lt;usize&gt;,
+    column: usize,
+) -&gt; impl Iterator&lt;Item = &amp;'t Row&gt;</code></pre>
+<p><code>impl Iterator</code> returns “some iterator type” without naming it; the <code>'t</code> lifetime ties
+the borrowed rows to the table they come from, so the compiler proves no action can
+hold row references after the document changes. Zero allocation, zero copies — each
+caller just walks the rows it needs.</p>
+</div>
+
+<figure class="gif" id="gif-columns">
+  <img src="gifs/columns.gif" alt="Adding an empty column and deleting it again across the whole file in Helix"
+       loading="lazy" onerror="this.closest('figure').classList.add('missing')">
+  <div class="placeholder">gifs/columns.gif — not recorded yet · tape: <code>docs/gifs/tapes/columns.tape</code> · <a href="#recording">how to record</a></div>
+  <figcaption>Add a column right of <code>id</code>, then delete it again — a byte-identical round trip.</figcaption>
+</figure>
+
+<details>
+<summary>Recording script — columns.gif (~20 s)</summary>
+<p><strong>Automated:</strong> <code>vhs docs/gifs/tapes/columns.tape</code></p>
+<p><strong>Manual:</strong></p>
+<ol>
+  <li>Open the copy of <code>docs/gifs/samples/columns.csv</code>; cursor on the <code>id</code> header cell.</li>
+  <li><kbd>Space</kbd><kbd>a</kbd>, pick <em>Add column right of "id"</em> — every row gains an empty
+      second cell, header included; the file stays diagnostic-free.</li>
+  <li>Move the cursor into the new empty column (one character right of the first comma).</li>
+  <li><kbd>Space</kbd><kbd>a</kbd>, pick <em>Delete column #2</em> (headerless columns get numbered
+      titles) — the file is byte-identical to where it started.</li>
+  <li>Quit with <code>:q!</code>.</li>
+</ol>
+<p><em>Show:</em> header moves with the rows (no new diagnostics); numbered title for the
+headerless column; clean round trip.</p>
+</details>
+
+<h2 id="select-column"><a class="anchor" href="#select-column">Select a column (Helix)</a></h2>
+
+<p>No LSP request lets a server set the user’s selection — that is deliberately
+client-side. The bridge (<code>src/features/columns.rs</code> +
+<code>handle_document_highlight</code> in <code>src/server.rs</code>): the server answers
+<code>textDocument/documentHighlight</code> — “which ranges belong together at this cursor?” —
+with <strong>every cell of the cursor’s column</strong>, and Helix’s
+<kbd>Space</kbd><kbd>h</kbd> (<em>select all references to the symbol under the cursor</em>) turns
+that response into one selection per range. Column selection, no protocol extension.</p>
+
+<ul>
+  <li>The ranges are <em>content</em> spans, not full cell spans: multi-cursor edits operate on
+      values while alignment padding survives.</li>
+  <li>An empty cell contributes a zero-width range — Helix places a bare cursor there,
+      ready for typing. Exactly what you want when filling a column.</li>
+  <li>Row participation mirrors the column-edit rule: clean rows that have the column,
+      header included; ranges arrive in document order.</li>
+</ul>
+
+<p>Daily use: <kbd>Space</kbd><kbd>h</kbd>, then <kbd>c</kbd> to change every cell, <kbd>A</kbd> to
+append to each, or pipe the selections through a shell command — ordinary Helix
+multi-cursor editing, scoped to a column.</p>
+
+<figure class="gif" id="gif-select">
+  <img src="gifs/select-column.gif" alt="Selecting a whole column with Space+h in Helix and editing every cell at once"
+       loading="lazy" onerror="this.closest('figure').classList.add('missing')">
+  <div class="placeholder">gifs/select-column.gif — not recorded yet · tape: <code>docs/gifs/tapes/select-column.tape</code> · <a href="#recording">how to record</a></div>
+  <figcaption><kbd>Space</kbd><kbd>h</kbd> turns the column into a multi-selection; <kbd>c</kbd> edits all cells at once.</figcaption>
+</figure>
+
+<details>
+<summary>Recording script — select-column.gif (~20 s)</summary>
+<p><strong>Automated:</strong> <code>vhs docs/gifs/tapes/select-column.tape</code></p>
+<p><strong>Manual:</strong></p>
+<ol>
+  <li>Open the copy of <code>docs/gifs/samples/highlight.csv</code>; cursor into the <code>name</code>
+      column (any row).</li>
+  <li><kbd>Space</kbd><kbd>h</kbd> — every cell of the column is selected; the empty cell in
+      row 3 shows as a bare cursor.</li>
+  <li>Press <kbd>c</kbd>, type a replacement (e.g. <code>part</code>), <kbd>Esc</kbd> — every cell of the
+      column now reads the same, including the previously empty one.</li>
+  <li>Press <kbd>u</kbd> to undo, pause, quit with <code>:q!</code>.</li>
+</ol>
+<p><em>Show:</em> per-cell selections (not a block selection); the empty-cell cursor; padding and
+neighboring columns untouched.</p>
+</details>
+
+<h2 id="rainbow"><a class="anchor" href="#rainbow">Rainbow columns (tree-sitter grammar)</a></h2>
+
+<p>One feature deliberately does <em>not</em> live in the language server. Helix highlights
+exclusively through tree-sitter — it has no LSP semantic-token support — so csv-lsp (or
+any language server) cannot color columns. Colors come from a grammar plus per-language
+queries, and this repository ships both in <code>tree-sitter-rainbow-csv/</code>: a grammar whose
+parse trees carry the column position (cells named <code>first</code> … <code>seventh</code>, cycling every
+seven columns) and an 11-line highlight query mapping those names to theme colors.</p>
+
+<p>It is a rewrite of the grammar Helix bundles for csv, keeping its node names — so
+existing themes keep working — while fixing what made it derail:</p>
+
+<div class="tablewrap"><table>
+  <thead><tr><th></th><th>bundled grammar</th><th>this grammar</th></tr></thead>
+  <tbody>
+    <tr><td>empty cells (<code>a,b,,,</code>)</td><td>parse error; neighboring rows change color</td><td>clean parse, stable colors</td></tr>
+    <tr><td>more than 7 columns</td><td>parse error after the 7th</td><td>cycle wraps (8th = <code>first</code>)</td></tr>
+    <tr><td>tab as delimiter (TSV)</td><td>whole row is one cell</td><td>supported</td></tr>
+    <tr><td><code>""</code> escapes in quoted cells</td><td>parse error</td><td>supported (RFC 4180)</td></tr>
+    <tr><td>missing final newline</td><td>parse error on the last row</td><td>tolerated</td></tr>
+  </tbody>
+</table></div>
+
+<p>Setup on top of the <a href="quickstart.html#helix">quickstart config</a> — pin <code>rev</code> to a
+commit for reproducible builds:</p>
+
+<pre data-lang="toml"><code># ~/.config/helix/languages.toml
+[[grammar]]
+name = "csv"
+source = { git = "https://github.com/tammoippen/csv-lsp", rev = "main", subpath = "tree-sitter-rainbow-csv" }</code></pre>
+
+<pre data-lang="sh"><code>hx --grammar fetch &amp;&amp; hx --grammar build
+
+# Helix resolves queries by language name: install for csv, inherit for the rest.
+Q=~/.config/helix/runtime/queries
+mkdir -p "$Q"/{csv,tsv,ssv,psv}
+cp csv-lsp/tree-sitter-rainbow-csv/queries/highlights.scm "$Q"/csv/
+for l in tsv ssv psv; do echo '; inherits: csv' &gt; "$Q"/$l/highlights.scm; done</code></pre>
+
+<p>One cosmetic caveat, shared with the bundled grammar: the grammar splits on all four
+delimiters in every file (tree-sitter has no per-file dialect detection), so a bare
+<code>,</code> inside an unquoted SSV cell starts a new color. Quote the cell if it bothers you —
+csv-lsp’s <em>diagnostics</em> always follow the file’s real dialect and are unaffected.
+Skipping the grammar override also works: recent Helix still rainbows csv/ssv/psv
+through the bundled grammar, with its empty-cell color shifts; tsv rows render as a
+single column.</p>
+
+<p>For the docs, a static screenshot works better than a GIF here: open
+<code>docs/gifs/samples/messy.csv</code> after the grammar setup, align it, and screenshot the
+terminal to <code>docs/gifs/rainbow.png</code> (referenced nowhere yet — add it to the README if
+you like).</p>
+
+<h2 id="recording"><a class="anchor" href="#recording">Recording the GIFs</a></h2>
+
+<p>The GIFs above are not committed — they are reproducible artifacts, recorded with
+<a href="https://github.com/charmbracelet/vhs">VHS</a>: a tool that scripts a real terminal
+session from a <code>.tape</code> file and renders it straight to GIF. The tapes live in
+<code>docs/gifs/tapes/</code>, one per GIF, and are the single source of truth for what each
+recording shows; the sample files they open live in <code>docs/gifs/samples/</code>.</p>
+
+<h3 id="recording-prereqs">Prerequisites</h3>
+
+<ol>
+  <li><strong>csv-lsp installed and Helix configured</strong> exactly as in the
+      <a href="quickstart.html">quickstart</a> (the tapes assume <kbd>Space</kbd><kbd>a</kbd>,
+      <code>:format</code> and <kbd>Space</kbd><kbd>h</kbd> reach csv-lsp). Verify with
+      <code>hx --health csv</code> first — a misconfigured server records an empty menu.</li>
+  <li><strong>VHS</strong>: <code>brew install vhs</code> or <code>go install github.com/charmbracelet/vhs@latest</code>
+      (VHS bundles its own headless terminal via ttyd and needs <code>ffmpeg</code>; the package
+      managers pull both in).</li>
+  <li>A font with the sample glyphs (the messy sample contains <code>é</code> and <code>名前</code>) — the
+      default VHS font handles them.</li>
+</ol>
+
+<h3 id="recording-run">Recording</h3>
+
+<p>From the repository root:</p>
+
+<pre data-lang="sh"><code>vhs docs/gifs/tapes/diagnostics.tape          # one tape …
+for t in docs/gifs/tapes/*.tape; do vhs "$t"; done   # … or all of them</code></pre>
+
+<p>Each tape copies its sample to <code>/tmp/demo.*</code> first and quits Helix with <code>:q!</code>, so the
+committed samples are never modified and every run starts from the same state. Output
+lands next to the pages as <code>docs/gifs/&lt;name&gt;.gif</code> — reload this page and the
+placeholders light up.</p>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>Tape</th><th>Output</th><th>Shows</th></tr></thead>
+  <tbody>
+    <tr><td><code>diagnostics.tape</code></td><td><code>diagnostics.gif</code></td><td>live squiggles appearing/disappearing while editing</td></tr>
+    <tr><td><code>pad-rows.tape</code></td><td><code>pad-rows.gif</code></td><td>pad quickfix + pad-all source action</td></tr>
+    <tr><td><code>align-compact.tape</code></td><td><code>align-compact.gif</code></td><td><code>:format</code> alignment, compact round trip</td></tr>
+    <tr><td><code>reinterpret-convert.tape</code></td><td><code>reinterpret-convert.gif</code></td><td>mislabeled file → reinterpret → convert</td></tr>
+    <tr><td><code>quote.tape</code></td><td><code>quote.gif</code></td><td>quote cell, quote column</td></tr>
+    <tr><td><code>columns.tape</code></td><td><code>columns.gif</code></td><td>add column, delete column</td></tr>
+    <tr><td><code>select-column.tape</code></td><td><code>select-column.gif</code></td><td><kbd>Space</kbd><kbd>h</kbd> column multi-selection</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="recording-anatomy">Anatomy of a tape</h3>
+
+<pre data-lang="tape"><code># docs/gifs/tapes/align-compact.tape — annotated
+Output docs/gifs/align-compact.gif      # written relative to where you run `vhs`
+Require hx                              # abort early if a binary is missing
+Require csv-lsp
+
+Set Shell bash
+Set FontSize 20                         # 20pt at 1200×660 ≈ README-friendly size
+Set Width 1200
+Set Height 660
+Set Padding 12
+Set Theme "Catppuccin Mocha"
+Set TypingSpeed 60ms                    # delay between keystrokes
+
+Hide                                    # setup happens off-camera …
+Type "cp docs/gifs/samples/messy.csv /tmp/demo.csv && hx /tmp/demo.csv"
+Enter
+Sleep 3s                                # give Helix + csv-lsp time to hand-shake
+Show                                    # … recording starts here
+
+Sleep 1.5s
+Type ":format"
+Sleep 500ms
+Enter
+Sleep 2.5s                              # linger on the aligned state
+
+Type " a"                               # Space then a = code-action menu
+Sleep 1.5s
+Enter                                   # first entry: Compact columns
+Sleep 2.5s
+
+Hide
+Type ":q!"
+Enter</code></pre>
+
+<div class="warn">
+<span class="callout-label">Caveat · menu positions</span>
+<p>Tapes select code-action entries by position (<code>Down</code> × n + <code>Enter</code>), relying on the
+server’s deterministic order (<a href="#anatomy">listed above</a>). Helix versions may sort the
+menu differently (preferred entries first) or add entries if your sample state drifts —
+if a recording picks the wrong action, adjust the <code>Down</code> count in the tape. Each tape
+has a comment marking every selection with the entry it expects.</p>
+</div>
+
+<h3 id="recording-polish">Polish</h3>
+
+<ul>
+  <li><strong>Size</strong>: keep GIFs under ~2–3 MB if they should embed in the README. Shorter
+      <code>Sleep</code>s and fewer scenes beat post-compression; if needed:
+      <code>gifsicle -O3 --lossy=80 -o out.gif in.gif</code>.</li>
+  <li><strong>Consistency</strong>: keep <code>FontSize</code>/<code>Width</code>/<code>Height</code>/<code>Theme</code> identical across all
+      tapes so the feature gallery looks like one recording session.</li>
+  <li><strong>Pacing</strong>: end every scene with a 2&nbsp;s hold on the result — the loop point of a GIF
+      is where the eye rests.</li>
+</ul>
+
+<h3 id="recording-manual">Recording manually instead</h3>
+
+<p>If you would rather drive Helix yourself (or VHS is unavailable), follow the numbered
+<em>manual</em> script in each feature section above while any screen recorder captures the
+terminal, then convert to GIF:</p>
+
+<pre data-lang="sh"><code># X11/Wayland/macOS: record with your tool of choice (OBS, wf-recorder, QuickTime), then:
+ffmpeg -i recording.mp4 -vf "fps=12,scale=1200:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" docs/gifs/align-compact.gif
+
+# terminal-native alternative: asciinema + agg
+asciinema rec demo.cast        # do the steps, Ctrl-D to stop
+agg --font-size 20 demo.cast docs/gifs/align-compact.gif</code></pre>
+
+<nav class="prevnext">
+  <a href="quickstart.html"><span class="dir">Previous</span>← Quickstart</a>
+  <a href="lsp.html"><span class="dir">Next</span>LSP setup →</a>
+</nav>
+
+</main>
+<footer>csv-lsp · MIT · <a href="https://github.com/tammoippen/csv-lsp">github.com/tammoippen/csv-lsp</a></footer>
+<script>
+/* Tiny syntax highlighter — progressive enhancement; the pages read fine as
+   plain text without it. One alternation regex per language; the first
+   defined capture group decides the color. Duplicated in every page. */
+(function () {
+  "use strict";
+  var esc = function (s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+  function paint(src, re, classes) {
+    var out = "", last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(src)) !== null) {
+      var cls = null;
+      for (var i = 1; i < m.length; i++) {
+        if (m[i] !== undefined) { cls = classes[i - 1]; break; }
+      }
+      out += esc(src.slice(last, m.index));
+      out += cls ? '<span class="hl-' + cls + '">' + esc(m[0]) + "</span>" : esc(m[0]);
+      last = m.index + m[0].length;
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    return out + esc(src.slice(last));
+  }
+  var RUST_KW = "as|break|const|continue|crate|dyn|else|enum|extern|false|fn|for|if|impl|in|let|loop|match|mod|move|mut|pub|ref|return|self|Self|static|struct|super|trait|true|type|unsafe|use|where|while|async|await";
+  var LANGS = {
+    rust: {
+      re: new RegExp(
+        "(\\/\\/[^\\n]*)|(\"(?:[^\"\\\\\\n]|\\\\.)*\")|(#!?\\[[^\\]\\n]*\\])|('[A-Za-z_][A-Za-z0-9_]*(?!'))|\\b([a-z_][A-Za-z0-9_]*!)|\\b(" + RUST_KW + ")\\b|\\b([A-Z][A-Za-z0-9_]*)\\b|\\b(\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[iu](?:8|16|32|64|size)|f32|f64)?)\\b",
+        "g"),
+      classes: ["c", "s", "a", "a", "f", "k", "t", "n"]
+    },
+    toml: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|(^\s*\[+[^\]\n]*\]+)|\b(true|false)\b|(^[A-Za-z0-9_.-]+(?=\s*=))/gm,
+      classes: ["c", "s", "t", "k", "f"]
+    },
+    sh: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'[^'\n]*')|(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?)/g,
+      classes: ["c", "s", "n"]
+    },
+    json: {
+      re: /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g,
+      classes: ["c", "s", "n", "k"]
+    },
+    tape: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|^\s*(Output|Require|Set|Type|Enter|Escape|Sleep|Hide|Show|Down|Up|Left|Right|Space|Backspace|Tab|Ctrl\+\S+)\b|\b(\d+(?:\.\d+)?(?:ms|s)?)\b/gm,
+      classes: ["c", "s", "k", "n"]
+    }
+  };
+  /* Rainbow columns for csv/tsv/ssv/psv snippets — the same trick the
+     tree-sitter grammar plays, including the mini dialect sniff. */
+  function paintCsv(src) {
+    var counts = { ",": 0, ";": 0, "|": 0, "\t": 0 };
+    var lines = src.split("\n");
+    var first = "";
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() !== "") { first = lines[i]; break; }
+    }
+    var inQ = false;
+    for (var j = 0; j < first.length; j++) {
+      var c = first[j];
+      if (c === '"') inQ = !inQ;
+      else if (!inQ && counts.hasOwnProperty(c)) counts[c]++;
+    }
+    var delim = ",", best = 0;
+    [",", "\t", ";", "|"].forEach(function (d) {
+      if (counts[d] > best) { best = counts[d]; delim = d; }
+    });
+    return lines.map(function (line) {
+      var out = "", col = 0, cell = "", q = false;
+      var flush = function () {
+        out += '<span class="hl-col' + (col % 7) + '">' + esc(cell) + "</span>";
+        cell = "";
+      };
+      for (var k = 0; k < line.length; k++) {
+        var ch = line[k];
+        /* Curly quotes guard doc annotations the same way real quotes guard cells. */
+        if (ch === '"' || ch === '\u201c' || ch === '\u201d') { q = !q; cell += ch; }
+        else if (!q && ch === delim) {
+          flush();
+          out += '<span class="hl-dim">' + esc(ch) + "</span>";
+          col++;
+        } else { cell += ch; }
+      }
+      flush();
+      return out;
+    }).join("\n");
+  }
+  try {
+    document.querySelectorAll("pre[data-lang]").forEach(function (pre) {
+      var lang = pre.getAttribute("data-lang");
+      var code = pre.querySelector("code") || pre;
+      var src = code.textContent;
+      if (lang === "csv" || lang === "tsv" || lang === "ssv" || lang === "psv") {
+        code.innerHTML = paintCsv(src);
+      } else if (LANGS[lang]) {
+        code.innerHTML = paint(src, LANGS[lang].re, LANGS[lang].classes);
+      }
+    });
+  } catch (err) { /* plain text is fine */ }
+})();
+</script>
+</body>
+</html>

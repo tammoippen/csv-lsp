@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The CSV parser · csv-lsp docs</title>
+<style>
+/* csv-lsp documentation — shared inline style.
+   Duplicated verbatim in every page so each file stays self-contained;
+   if you change it, change it in all pages (see contributing.html#docs). */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --inset: #eef1f4;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #0969da;
+  --accent-bg: #ddf4ff;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --err: #cf222e;
+  --hl-k: #cf222e; --hl-s: #0a3069; --hl-c: #6e7781; --hl-t: #953800;
+  --hl-f: #8250df; --hl-n: #0550ae; --hl-a: #116329; --hl-dim: #6e7781;
+  --col-0: #cf222e; --col-1: #bc4c00; --col-2: #7d4e00; --col-3: #116329;
+  --col-4: #0550ae; --col-5: #6639ba; --col-6: #99286e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --inset: #1c2129;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --border: #30363d;
+    --accent: #4493f8;
+    --accent-bg: #121d2f;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --hl-k: #ff7b72; --hl-s: #a5d6ff; --hl-c: #8b949e; --hl-t: #ffa657;
+    --hl-f: #d2a8ff; --hl-n: #79c0ff; --hl-a: #7ee787; --hl-dim: #8b949e;
+    --col-0: #ff7b72; --col-1: #f0883e; --col-2: #d29922; --col-3: #3fb950;
+    --col-4: #58a6ff; --col-5: #bc8cff; --col-6: #f778ba;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+}
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+header::after {
+  content: ""; display: block; height: 2px;
+  background: linear-gradient(90deg, var(--col-0), var(--col-1), var(--col-3), var(--col-4), var(--col-5));
+}
+.header-inner {
+  max-width: 60rem; margin: 0 auto; padding: 0.65rem 1.25rem;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.5rem;
+}
+.brand { font-weight: 700; font-size: 1.05rem; color: var(--fg); text-decoration: none; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 400; margin-left: 0.45rem; }
+header nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; font-size: 0.95rem; }
+header nav a { color: var(--muted); text-decoration: none; padding: 0.1rem 0; }
+header nav a:hover { color: var(--fg); }
+header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+footer {
+  max-width: 60rem; margin: 0 auto; padding: 1.25rem;
+  color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border);
+}
+footer a { color: inherit; }
+h1 { font-size: 1.9rem; line-height: 1.25; letter-spacing: -0.02em; margin: 0.8rem 0 0.3rem; }
+p.lead { font-size: 1.1rem; color: var(--muted); margin-top: 0.2rem; }
+h2 { font-size: 1.45rem; letter-spacing: -0.01em; margin: 2.6rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1.15rem; margin: 1.9rem 0 0.5rem; }
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; }
+h2 a.anchor, h3 a.anchor { color: inherit; text-decoration: none; }
+h2 a.anchor:hover::after, h3 a.anchor:hover::after { content: " #"; color: var(--muted); }
+a { color: var(--accent); }
+li { margin: 0.25rem 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+strong { font-weight: 650; }
+code { background: var(--inset); border-radius: 5px; padding: 0.12em 0.35em; font-size: 0.86em; }
+pre {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 0.9rem 0;
+}
+pre code { background: none; border-radius: 0; padding: 0; font-size: 0.86rem; display: block; }
+pre[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute; top: 0.35rem; right: 0.7rem;
+  font-size: 0.68rem; color: var(--muted); font-family: inherit;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+kbd {
+  display: inline-block; padding: 0.08em 0.45em; font-size: 0.82em;
+  background: var(--surface); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 5px;
+}
+.hl-k { color: var(--hl-k); } .hl-s { color: var(--hl-s); } .hl-c { color: var(--hl-c); font-style: italic; }
+.hl-t { color: var(--hl-t); } .hl-f { color: var(--hl-f); } .hl-n { color: var(--hl-n); }
+.hl-a { color: var(--hl-a); } .hl-dim { color: var(--hl-dim); }
+.hl-col0 { color: var(--col-0); } .hl-col1 { color: var(--col-1); } .hl-col2 { color: var(--col-2); }
+.hl-col3 { color: var(--col-3); } .hl-col4 { color: var(--col-4); } .hl-col5 { color: var(--col-5); }
+.hl-col6 { color: var(--col-6); }
+.tablewrap { overflow-x: auto; margin: 0.9rem 0; }
+table { border-collapse: collapse; font-size: 0.92rem; min-width: 60%; }
+th, td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; vertical-align: top; }
+th { background: var(--surface); }
+.note, .tip, .warn, .concept {
+  border: 1px solid var(--border); border-left-width: 4px;
+  border-radius: 6px; padding: 0.7rem 1rem; margin: 1rem 0;
+  background: var(--surface);
+}
+.note { border-left-color: var(--accent); }
+.tip { border-left-color: var(--ok); }
+.warn { border-left-color: var(--warn); }
+.concept { border-left-color: var(--hl-t); }
+.note > :first-child, .tip > :first-child, .warn > :first-child, .concept > :first-child { margin-top: 0.1rem; }
+.note > :last-child, .tip > :last-child, .warn > :last-child, .concept > :last-child { margin-bottom: 0.1rem; }
+.callout-label {
+  display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+}
+.concept .callout-label { color: var(--hl-t); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 0.9rem; margin: 1.2rem 0; }
+.card {
+  display: block; border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.9rem 1rem; background: var(--surface);
+  color: inherit; text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.card:hover { border-color: var(--accent); }
+.card h3 { margin: 0 0 0.3rem; font-size: 1.02rem; color: var(--accent); }
+.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.card .card-num { float: right; color: var(--muted); font-size: 0.8rem; }
+figure.diagram { margin: 1.2rem 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption, figure.gif figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; text-align: center; }
+.d-box { fill: var(--surface); stroke: var(--border); }
+.d-box2 { fill: var(--accent-bg); stroke: var(--accent); }
+.d-txt { fill: var(--fg); font: 13px system-ui, sans-serif; }
+.d-sub { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+.d-mono { fill: var(--fg); font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-mono-sm { fill: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-edge { stroke: var(--muted); fill: none; stroke-width: 1.3; }
+.d-edge-accent { stroke: var(--accent); fill: none; stroke-width: 1.5; }
+.d-arrow { fill: var(--muted); }
+.d-arrow-accent { fill: var(--accent); }
+figure.gif { margin: 1.2rem 0; }
+figure.gif img {
+  display: block; max-width: 100%; border: 1px solid var(--border); border-radius: 10px;
+}
+figure.gif.missing img { display: none; }
+figure.gif .placeholder { display: none; }
+figure.gif.missing .placeholder {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 1px dashed var(--border); border-radius: 10px;
+  padding: 2.2rem 1rem; color: var(--muted); font-size: 0.9rem;
+  background: var(--surface);
+}
+details { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin: 0.9rem 0; background: var(--surface); }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+.prevnext {
+  display: flex; justify-content: space-between; gap: 1rem;
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+.prevnext a { text-decoration: none; }
+.prevnext .dir { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pill {
+  display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.78rem; background: var(--inset); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.05rem 0.55rem;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a class="brand" href="index.html">csv-lsp<span>docs</span></a>
+    <nav>
+      <a href="quickstart.html">Quickstart</a>
+      <a href="features.html">Features</a>
+      <a href="lsp.html">LSP</a>
+      <a href="parser.html" aria-current="page">Parser</a>
+      <a href="testing.html">Testing</a>
+      <a href="contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<h1>The CSV parser</h1>
+<p class="lead">The project’s core asset: a hand-written, error-tolerant state machine
+that turns any byte sequence into a span-rich table — never failing, never panicking,
+never losing layout.</p>
+
+<h2 id="why"><a class="anchor" href="#why">Why hand-written?</a></h2>
+
+<p>BurntSushi’s <code>csv</code>/<code>csv-core</code> is the canonical Rust CSV reader — and the wrong tool
+here. An LSP server is an <em>IDE backend</em>, and its parser has different requirements
+than a data reader, for the same reason rust-analyzer does not parse Rust with
+<code>syn</code>:</p>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>What the LSP needs</th><th>What the <code>csv</code> crate offers</th></tr></thead>
+  <tbody>
+    <tr><td>per-cell byte spans (cell vs content vs quotes vs padding) for diagnostics and precise edits</td><td>per-record positions only; field spans not exposed</td></tr>
+    <tr><td>error <em>reporting</em> with recovery (unclosed quote, stray quote, text after closing quote)</td><td>lenient by design: silently “repairs” malformed input — destroying exactly the information to surface</td></tr>
+    <tr><td>lossless layout model (alignment padding, original quoting, CRLF, BOM) so align ⇄ compact round-trips</td><td>normalizes on read; layout is discarded</td></tr>
+    <tr><td>tolerate spaces after a closing quote (<code>"abc"  ,</code> — produced by the align feature itself)</td><td>not modeled</td></tr>
+    <tr><td>multi-line quoted cells mapped back to editor lines</td><td>spans missing</td></tr>
+  </tbody>
+</table></div>
+
+<p>So <code>parse.rs</code> is ~400 lines of owned, deeply tested state machine — with <code>csv-core</code>
+kept only as a behavioral reference for edge cases. The consequence is embraced: the
+parser gets the deepest test coverage in the project, and every RFC 4180 edge-case
+decision is documented here instead of inherited silently from a library.</p>
+
+<h2 id="csv-primer"><a class="anchor" href="#csv-primer">CSV in five minutes</a></h2>
+
+<p>RFC 4180 defines the format: records separated by line breaks, fields separated by
+<code>,</code>. A field may be <strong>quoted</strong> with <code>"…"</code>; inside quotes, delimiters, line breaks and
+escaped quotes (<code>""</code> → one literal <code>"</code>) are content. Which means this is <em>one</em> record
+with two fields:</p>
+
+<pre data-lang="csv"><code>"first
+line",second</code></pre>
+
+<p>Consequence: <strong>row ≠ line</strong>. Everything in this crate therefore works on byte spans,
+and the <a href="lsp.html#positions">line index</a> maps spans to editor lines at the boundary —
+multi-line cells cost nothing extra.</p>
+
+<p>The four dialects (CSV <code>,</code> · TSV tab · SSV <code>;</code> · PSV <code>|</code>) differ <em>only</em> in the
+delimiter byte; quoting rules are identical. Real-world files deviate from the RFC
+constantly (<code>5" bolt</code>…), so the parser is <strong>total</strong>: it never rejects input, it
+reports deviations as recoverable errors with exact spans.</p>
+
+<h2 id="model"><a class="anchor" href="#model">The data model</a></h2>
+
+<pre data-lang="rust"><code>pub struct Span { pub start: usize, pub end: usize }   // byte offsets, half-open
+
+pub struct Table {
+    pub rows: Vec&lt;Row&gt;,                 // all rows, blank ones included
+    pub errors: Vec&lt;ParseError&gt;,        // recovered problems, in source order
+    pub dialect: Dialect,
+    pub line_terminator: LineTerminator, // first terminator seen: Lf | CrLf
+    pub has_bom: bool,                   // spans never include the BOM
+    pub ends_with_newline: bool,         // no phantom empty row for it
+}
+
+pub struct Row { pub span: Span, pub cells: Vec&lt;Cell&gt; }  // span EXCLUDES the terminator
+
+pub struct Cell {
+    pub span: Span,           // full extent incl. padding, excl. delimiters
+    pub content_span: Span,   // padding-trimmed; quoted cells INCLUDE the quotes
+    pub quoting: Quoting,     // Unquoted | Quoted
+    pub has_escaped_quotes: bool,   // "" occurred → value() must allocate
+}
+
+pub fn parse(text: &amp;str, dialect: Dialect) -&gt; Table;   // total: never fails</code></pre>
+
+<p>The key idea is the <strong>two spans per cell</strong>. Aligned files pad cells with spaces so
+delimiters line up; padding is <em>layout</em>, values are <em>data</em>, and the model keeps them
+apart without storing anything extra — padding is derived as
+<code>span.start..content_span.start</code> (leading) and <code>content_span.end..span.end</code>
+(trailing). For the row <code>id, "a""b" ,x</code>:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 542 190" role="img" aria-label="Cell anatomy: the middle cell of the row id, quoted a escaped-quote b, x — its span covers bytes 3 to 11 including padding, its content span covers bytes 4 to 10 including the quotes, and its decoded value is a quote b">
+  <g class="d-mono" style="font-size:17px">
+    <text x="57"  y="38" text-anchor="middle">i</text>
+    <text x="91"  y="38" text-anchor="middle">d</text>
+    <text x="125" y="38" text-anchor="middle" class="hl-dim">,</text>
+    <text x="159" y="38" text-anchor="middle" style="fill:var(--muted)">·</text>
+    <text x="193" y="38" text-anchor="middle" style="fill:var(--hl-s)">"</text>
+    <text x="227" y="38" text-anchor="middle">a</text>
+    <text x="261" y="38" text-anchor="middle" style="fill:var(--hl-s)">"</text>
+    <text x="295" y="38" text-anchor="middle" style="fill:var(--hl-s)">"</text>
+    <text x="329" y="38" text-anchor="middle">b</text>
+    <text x="363" y="38" text-anchor="middle" style="fill:var(--hl-s)">"</text>
+    <text x="397" y="38" text-anchor="middle" style="fill:var(--muted)">·</text>
+    <text x="431" y="38" text-anchor="middle" class="hl-dim">,</text>
+    <text x="465" y="38" text-anchor="middle">x</text>
+  </g>
+  <g class="d-mono-sm">
+    <text x="57"  y="14" text-anchor="middle">0</text>
+    <text x="159" y="14" text-anchor="middle">3</text>
+    <text x="193" y="14" text-anchor="middle">4</text>
+    <text x="363" y="14" text-anchor="middle">9</text>
+    <text x="397" y="14" text-anchor="middle">10</text>
+    <text x="465" y="14" text-anchor="middle">12</text>
+  </g>
+  <path d="M 142 52 L 142 62 L 414 62 L 414 52" class="d-edge"/>
+  <text x="278" y="80" text-anchor="middle" class="d-sub">cell.span = 3..11 — padding included, delimiters excluded</text>
+  <path d="M 176 94 L 176 104 L 380 104 L 380 94" class="d-edge"/>
+  <text x="278" y="122" text-anchor="middle" class="d-sub">cell.content_span = 4..10 — trimmed; quotes included for quoted cells</text>
+  <text x="278" y="156" text-anchor="middle" class="d-mono-sm">cell.value(text) → a"b   (Cow::Owned — the "" escape forces one allocation)</text>
+  <text x="278" y="178" text-anchor="middle" class="d-sub">· = alignment space</text>
+</svg>
+<figcaption>One cell, two spans, zero copies until decoding demands one.</figcaption>
+</figure>
+
+<ul>
+  <li>An <strong>all-padding cell</strong> gets a zero-width content span at <code>span.start</code> — the spaces
+      count as trailing padding, consistent with left-aligned columns.</li>
+  <li>A <strong>blank row</strong> is exactly one unquoted cell with empty content. Blank rows are
+      separators: legal, skipped by column checks, rendered as empty lines.</li>
+  <li>The <strong>header</strong> is the first non-blank row; its cell count is the column contract
+      for the whole file (<code>Table::expected_columns</code>).</li>
+  <li><code>Span</code> is <code>Copy</code> — two <code>usize</code>s move cheaper than a reference — and its
+      constructor <code>debug_assert!</code>s <code>start &lt;= end</code>, so inverted spans blow up in tests
+      and cost nothing in release builds.</li>
+</ul>
+
+<div class="concept">
+<span class="callout-label">Rust concept · Cow — decode lazily, allocate rarely</span>
+<p><code>Cell::value</code> returns <code>Cow&lt;'t, str&gt;</code> (“clone on write”), an enum of
+<code>Borrowed(&amp;'t str)</code> or <code>Owned(String)</code>:</p>
+<pre data-lang="rust"><code>pub fn value&lt;'t&gt;(&amp;self, text: &amp;'t str) -&gt; Cow&lt;'t, str&gt; {
+    let content = self.content_span.slice(text);
+    match self.quoting {
+        Quoting::Unquoted =&gt; Cow::Borrowed(content),
+        Quoting::Quoted =&gt; {
+            let inner = content.strip_prefix('"').unwrap_or(content);
+            let inner = inner.strip_suffix('"').unwrap_or(inner);
+            if self.has_escaped_quotes {
+                Cow::Owned(inner.replace("\"\"", "\""))
+            } else {
+                Cow::Borrowed(inner)
+            }
+        }
+    }
+}</code></pre>
+<p>Unquoted and cleanly-quoted cells borrow straight from the document text — the
+lifetime <code>'t</code> ties the result to the text, and the borrow checker guarantees no value
+outlives the document it points into. Only the <code>""</code> escape forces an allocation, and
+the parser recorded whether one occurred so decoding never has to scan twice. Note the
+double <code>unwrap_or</code>: an <em>unclosed</em> cell has no closing quote to strip, so both strips
+are optional — recovery reaches all the way into decoding.</p>
+</div>
+
+<h2 id="state-machine"><a class="anchor" href="#state-machine">The state machine</a></h2>
+
+<p>The parser scans <strong>bytes</strong>, cell by cell. Each cell starts in <code>CellStart</code>, runs
+through at most one quoted or unquoted phase, and reports how it ended — on a
+delimiter (another cell follows in this row) or at a row end:</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 900 345" role="img" aria-label="Parser state machine: CellStart transitions to InUnquoted on ordinary bytes or InQuoted on a quote; both emit the cell on delimiter, end of line, or end of file; InQuoted transitions to AfterQuoted on the closing quote; error transitions record StrayQuote, UnclosedQuote and TextAfterClosingQuote">
+  <defs>
+    <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="d-arrow"/>
+    </marker>
+  </defs>
+
+  <rect x="20" y="140" width="150" height="46" rx="10" class="d-box"/>
+  <text x="95" y="168" text-anchor="middle" class="d-mono">CellStart</text>
+  <path d="M 60 140 C 40 108, 150 108, 130 140" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="95" y="100" text-anchor="middle" class="d-sub">space — leading padding</text>
+
+  <rect x="250" y="40" width="150" height="46" rx="10" class="d-box"/>
+  <text x="325" y="68" text-anchor="middle" class="d-mono">InUnquoted</text>
+  <path d="M 290 40 C 270 8, 380 8, 360 40" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="440" y="20" text-anchor="start" class="d-sub">" — StrayQuote · quote stays content</text>
+
+  <rect x="250" y="240" width="150" height="46" rx="10" class="d-box"/>
+  <text x="325" y="268" text-anchor="middle" class="d-mono">InQuoted</text>
+  <path d="M 290 286 C 270 318, 380 318, 360 286" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="325" y="336" text-anchor="middle" class="d-sub">"" escape · any byte (even \n)</text>
+
+  <rect x="480" y="240" width="150" height="46" rx="10" class="d-box"/>
+  <text x="555" y="268" text-anchor="middle" class="d-mono">AfterQuoted</text>
+  <path d="M 520 286 C 500 318, 610 318, 590 286" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="558" y="336" text-anchor="start" class="d-sub">space ok · other → TextAfterClosingQuote</text>
+
+  <rect x="712" y="134" width="172" height="60" rx="10" class="d-box2"/>
+  <text x="798" y="157" text-anchor="middle" class="d-txt">emit cell</text>
+  <text x="798" y="172" text-anchor="middle" class="d-sub">delimiter → next cell</text>
+  <text x="798" y="186" text-anchor="middle" class="d-sub">otherwise → row end</text>
+
+  <path d="M 170 150 C 210 130, 220 95, 249 75" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="195" y="105" text-anchor="middle" class="d-sub">other</text>
+  <path d="M 170 176 C 210 196, 220 231, 249 251" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="200" y="228" text-anchor="middle" class="d-sub">"</text>
+  <line x1="170" y1="163" x2="710" y2="163" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="440" y="153" text-anchor="middle" class="d-sub">delim / EOL / EOF — empty cell</text>
+
+  <path d="M 400 63 C 520 63, 640 100, 710 143" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="580" y="78" text-anchor="middle" class="d-sub">delim / EOL / EOF</text>
+
+  <line x1="400" y1="263" x2="478" y2="263" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="440" y="253" text-anchor="middle" class="d-sub">closing "</text>
+
+  <path d="M 400 245 C 500 218, 600 210, 710 182" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="562" y="203" text-anchor="middle" class="d-sub">EOF — UnclosedQuote</text>
+
+  <path d="M 630 250 C 680 242, 720 225, 758 196" class="d-edge" marker-end="url(#arr3)"/>
+  <text x="712" y="224" text-anchor="middle" class="d-sub">delim / EOL / EOF</text>
+</svg>
+<figcaption>Per-cell state machine. Every path leads to “emit cell” — that is what makes the parser total.</figcaption>
+</figure>
+
+<p>The same machine as a transition table:</p>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>State</th><th>Input</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="4"><code>CellStart</code></td><td>space</td><td>consume — leading padding</td></tr>
+    <tr><td><code>"</code></td><td>→ <code>InQuoted</code></td></tr>
+    <tr><td>delim / EOL / EOF</td><td>emit an empty cell</td></tr>
+    <tr><td>other</td><td>→ <code>InUnquoted</code></td></tr>
+    <tr><td rowspan="2"><code>InUnquoted</code></td><td>delim / EOL / EOF</td><td>emit — content = raw minus outer spaces</td></tr>
+    <tr><td><code>"</code></td><td>record <span class="pill">StrayQuote</span>; the quote is literal content; stay</td></tr>
+    <tr><td rowspan="4"><code>InQuoted</code></td><td><code>""</code></td><td>escaped quote — flag the cell; stay</td></tr>
+    <tr><td><code>"</code></td><td>→ <code>AfterQuoted</code> (content ends after this quote)</td></tr>
+    <tr><td>CR / LF / other</td><td>content — this is how cells span lines; stay</td></tr>
+    <tr><td>EOF</td><td>record <span class="pill">UnclosedQuote</span> at the <em>opening</em> quote; emit</td></tr>
+    <tr><td rowspan="3"><code>AfterQuoted</code></td><td>space</td><td>tolerated silently — align’s own layout</td></tr>
+    <tr><td>delim / EOL / EOF</td><td>emit</td></tr>
+    <tr><td>other</td><td>record <span class="pill">TextAfterClosingQuote</span> over the garbage run (trailing spaces trimmed); skip; the quoted value is kept</td></tr>
+  </tbody>
+</table></div>
+
+<p>After each cell: a delimiter continues the row; <code>\n</code>, <code>\r\n</code> or lone <code>\r</code> ends it
+(the row span excludes the terminator; the file’s <em>first</em> terminator is recorded for
+re-rendering); EOF ends it with <code>ends_with_newline = false</code>. In code, the unquoted
+scan is a loop that breaks with the reason the cell ended:</p>
+
+<pre data-lang="rust"><code>let end = loop {
+    match self.bytes.get(self.pos) {
+        None | Some(b'\n' | b'\r') =&gt; break CellEnd::RowEnd,
+        Some(&amp;b) if b == self.delimiter =&gt; break CellEnd::Delimiter,
+        Some(b' ') =&gt; self.pos += 1, // padding, unless content follows
+        Some(b'"') =&gt; {
+            // Stray quote: report it, keep it as literal content.
+            self.error(ParseErrorKind::StrayQuote, self.pos, self.pos + 1);
+            self.pos += 1;
+            content_end = self.pos;
+        }
+        Some(_) =&gt; {
+            self.pos += 1;
+            content_end = self.pos;
+        }
+    }
+};</code></pre>
+
+<div class="note">
+<span class="callout-label">The safety property that makes byte-wise scanning legal</span>
+<p>The scanner walks <code>&amp;[u8]</code>, yet all spans must lie on <code>char</code> boundaries of the
+<code>&amp;str</code>. That holds by a property of UTF-8: every byte of a multi-byte sequence has the
+high bit set, so the ASCII bytes the parser splits on (delimiter, quote, CR, LF, space)
+<strong>can never occur inside</strong> a multi-byte character. Splitting only at those bytes means
+splitting only at character boundaries — no <code>char_indices()</code> needed, no O(n) decoding
+per lookup, and the property suite still verifies <code>is_char_boundary</code> for every span
+the parser ever produces.</p>
+</div>
+
+<div class="concept">
+<span class="callout-label">Rust concept · loops that return values, matches that see patterns</span>
+<p>Two idioms carry this parser. <code>break</code> with a value turns a scan loop into an
+expression (<code>let end = loop { … break CellEnd::Delimiter … }</code>) — no mutable “reason”
+flag. And slice access via <code>self.bytes.get(self.pos)</code> yields an
+<code>Option&lt;&amp;u8&gt;</code>, so one <code>match</code> handles EOF (<code>None</code>) and byte classes
+(or-patterns like <code>Some(b'\n' | b'\r')</code>, and a guard for the run-time delimiter)
+in a single exhaustive block: the compiler forces every input class to be handled —
+there is no “default: fall through” to forget.</p>
+</div>
+
+<h2 id="recovery"><a class="anchor" href="#recovery">Error recovery</a></h2>
+
+<p>Three kinds of quoting damage are recovered, each with a deliberate span policy — the
+span is what the user sees underlined:</p>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>Kind</th><th>Example</th><th>Error span</th><th>Recovery</th><th>Severity</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill">UnclosedQuote</span></td><td><code>"abc</code> … EOF</td><td>the opening <code>"</code> (1 byte)</td><td>the rest of the file becomes the cell’s content</td><td>error</td></tr>
+    <tr><td><span class="pill">StrayQuote</span></td><td><code>5" bolt</code></td><td>the stray <code>"</code></td><td>quote is literal content, keep scanning</td><td>warning — extremely common in the wild</td></tr>
+    <tr><td><span class="pill">TextAfterClosingQuote</span></td><td><code>"x" y,z</code></td><td>the garbage run (<code>y</code>)</td><td>garbage skipped; the cell’s value stays <code>x</code></td><td>error</td></tr>
+  </tbody>
+</table></div>
+
+<p>Every error records the index of the row it sits on, and that index powers the
+<strong>cascade prevention</strong> rule used across the codebase: rows overlapping a parse error
+are excluded from column-count checks (one unclosed quote must not produce fifty
+ragged-row errors) and are passed through <strong>verbatim</strong> by every rewrite — the renderer
+never reformats what the parser could not fully understand.</p>
+
+<h2 id="policies"><a class="anchor" href="#policies">Structural policies</a></h2>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>Topic</th><th>Policy</th></tr></thead>
+  <tbody>
+    <tr><td>Quoted cells</td><td>RFC 4180: may contain the delimiter, <code>""</code> escapes, and <strong>newlines</strong> — a row can span editor lines</td></tr>
+    <tr><td>Space after a closing quote</td><td>tolerated silently — <code>"abc"  ,</code> is exactly what the align feature produces; the parser must accept its own output</td></tr>
+    <tr><td>Padding</td><td>ASCII space only (a tab is the TSV delimiter; inside CSV cells it is content)</td></tr>
+    <tr><td>BOM (<code>EF BB BF</code>)</td><td>recorded as a flag; spans start after it; re-emitted on render</td></tr>
+    <tr><td>Line terminators</td><td><code>\n</code>, <code>\r\n</code>, lone <code>\r</code> all accepted; the first one seen is recorded and reused when re-rendering (mixed files normalize — documented)</td></tr>
+    <tr><td>Trailing newline</td><td>a flag, never a phantom empty row</td></tr>
+  </tbody>
+</table></div>
+
+<div class="warn">
+<span class="callout-label">Gotcha worth internalizing</span>
+<p><code>ends_with_newline</code> must come from the parser’s terminator handling, <strong>not</strong> from
+<code>text.ends_with('\n')</code> — a trailing newline inside an unclosed quote is cell
+<em>content</em>, not a row terminator. This is the kind of interaction that makes the
+recovery rules load-bearing for every feature downstream.</p>
+</div>
+
+<h2 id="invariants"><a class="anchor" href="#invariants">The invariant catalog</a></h2>
+
+<p>These are the structural guarantees everything downstream (rendering, edits, features)
+builds on. They are machine-checked: <code>assert_table_sound</code> in
+<code>tests/properties.rs</code> asserts every one of them over thousands of generated documents
+(<a href="testing.html#invariant-map">the invariant map</a> shows which property covers what).</p>
+
+<ol>
+  <li><strong>Spans nest:</strong> <code>content_span ⊆ span ⊆ row.span</code>, and every offset lies on a
+      <code>char</code> boundary of the text.</li>
+  <li><strong>Rows tile the text:</strong> adjacent rows are separated by exactly one terminator;
+      the last row ends at EOF, or one terminator before it iff
+      <code>ends_with_newline</code>. Nothing is lost, nothing is invented.</li>
+  <li><strong>Cells tile their row:</strong> the first cell starts at the row start, the last ends at
+      the row end, and neighbors straddle exactly one delimiter byte.</li>
+  <li><strong>Padding is spaces:</strong> leading padding is always ASCII spaces; trailing padding is
+      too on clean rows (on a <span class="pill">text-after-quote</span> row the trailing range
+      holds the garbage bytes — and such rows are never reformatted).</li>
+  <li><strong>Blank ⇔ all-space:</strong> a row is blank exactly when its text is empty or spaces
+      only.</li>
+  <li><strong>Errors sit on their rows:</strong> <code>error.row</code> is in range and the error span lies
+      within that row’s span.</li>
+  <li><strong>Decoding is total:</strong> <code>cell.value(text)</code> never panics for any table the parser
+      can produce.</li>
+</ol>
+
+<h2 id="cursor"><a class="anchor" href="#cursor">Cursor resolution</a></h2>
+
+<p>Features constantly ask “which cell is the cursor on?”. <code>Table::row_at</code> and
+<code>cell_at</code> answer with binary search (<code>partition_point</code> over span starts) and two
+deliberate conventions, chosen to match what feels right in an editor:</p>
+
+<ul>
+  <li><strong>Row ends are inclusive:</strong> a cursor sitting at the end of a row — on its
+      terminator — still belongs to that row, so end-of-line quickfixes work.</li>
+  <li><strong>A cursor on a delimiter resolves to the cell left of it</strong>; a cursor at the row
+      end to the last cell.</li>
+</ul>
+
+<p>Both helpers are total for any offset (in bounds or not), and they work inside
+multi-line quoted cells — an offset on the second editor line of a quoted cell still
+resolves to the row that owns it.</p>
+
+<h2 id="tested"><a class="anchor" href="#tested">How the parser is tested</a></h2>
+
+<p>Four layers, each catching what the previous cannot (the
+<a href="testing.html">testing page</a> has the full story):</p>
+
+<ol>
+  <li><strong>Span-slice unit tests.</strong> Assertions compare <em>text</em>, not indices:
+      <code>assert_eq!(cell.span.slice(text), " bb ")</code> — failures read like CSV, not like
+      off-by-one arithmetic. Every state-machine arm and every recovery rule has a named
+      test (<code>unclosed_quote_swallows_the_rest_and_reports_the_opening_quote</code>).</li>
+  <li><strong>The corpus.</strong> ~25 adversarial snippets (<code>"""</code>, <code>\r\r\n</code>, BOM-only, emoji
+      straddling quotes, <code>\0</code> bytes…) × all four dialects, asserting only totality: no
+      panic, spans in bounds and on char boundaries, decoding never fails.</li>
+  <li><strong>Property tests.</strong> <code>proptest</code> generates thousands of CSV-shaped documents and
+      asserts the <a href="#invariants">entire invariant catalog</a> plus the render round-trips
+      (align/compact idempotence, value preservation, lossless dialect conversion) —
+      the inputs nobody thought to hand-pick.</li>
+  <li><strong>Golden renders.</strong> The renderer’s output for representative inputs is compared
+      against inline string literals — layout decisions (BOM, CRLF, final newline,
+      verbatim error rows) stay pinned down exactly.</li>
+</ol>
+
+<nav class="prevnext">
+  <a href="lsp.html"><span class="dir">Previous</span>← LSP setup</a>
+  <a href="testing.html"><span class="dir">Next</span>Testing →</a>
+</nav>
+
+</main>
+<footer>csv-lsp · MIT · <a href="https://github.com/tammoippen/csv-lsp">github.com/tammoippen/csv-lsp</a></footer>
+<script>
+/* Tiny syntax highlighter — progressive enhancement; the pages read fine as
+   plain text without it. One alternation regex per language; the first
+   defined capture group decides the color. Duplicated in every page. */
+(function () {
+  "use strict";
+  var esc = function (s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+  function paint(src, re, classes) {
+    var out = "", last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(src)) !== null) {
+      var cls = null;
+      for (var i = 1; i < m.length; i++) {
+        if (m[i] !== undefined) { cls = classes[i - 1]; break; }
+      }
+      out += esc(src.slice(last, m.index));
+      out += cls ? '<span class="hl-' + cls + '">' + esc(m[0]) + "</span>" : esc(m[0]);
+      last = m.index + m[0].length;
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    return out + esc(src.slice(last));
+  }
+  var RUST_KW = "as|break|const|continue|crate|dyn|else|enum|extern|false|fn|for|if|impl|in|let|loop|match|mod|move|mut|pub|ref|return|self|Self|static|struct|super|trait|true|type|unsafe|use|where|while|async|await";
+  var LANGS = {
+    rust: {
+      re: new RegExp(
+        "(\\/\\/[^\\n]*)|(\"(?:[^\"\\\\\\n]|\\\\.)*\")|(#!?\\[[^\\]\\n]*\\])|('[A-Za-z_][A-Za-z0-9_]*(?!'))|\\b([a-z_][A-Za-z0-9_]*!)|\\b(" + RUST_KW + ")\\b|\\b([A-Z][A-Za-z0-9_]*)\\b|\\b(\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[iu](?:8|16|32|64|size)|f32|f64)?)\\b",
+        "g"),
+      classes: ["c", "s", "a", "a", "f", "k", "t", "n"]
+    },
+    toml: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|(^\s*\[+[^\]\n]*\]+)|\b(true|false)\b|(^[A-Za-z0-9_.-]+(?=\s*=))/gm,
+      classes: ["c", "s", "t", "k", "f"]
+    },
+    sh: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'[^'\n]*')|(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?)/g,
+      classes: ["c", "s", "n"]
+    },
+    json: {
+      re: /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g,
+      classes: ["c", "s", "n", "k"]
+    },
+    tape: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|^\s*(Output|Require|Set|Type|Enter|Escape|Sleep|Hide|Show|Down|Up|Left|Right|Space|Backspace|Tab|Ctrl\+\S+)\b|\b(\d+(?:\.\d+)?(?:ms|s)?)\b/gm,
+      classes: ["c", "s", "k", "n"]
+    }
+  };
+  /* Rainbow columns for csv/tsv/ssv/psv snippets — the same trick the
+     tree-sitter grammar plays, including the mini dialect sniff. */
+  function paintCsv(src) {
+    var counts = { ",": 0, ";": 0, "|": 0, "\t": 0 };
+    var lines = src.split("\n");
+    var first = "";
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() !== "") { first = lines[i]; break; }
+    }
+    var inQ = false;
+    for (var j = 0; j < first.length; j++) {
+      var c = first[j];
+      if (c === '"') inQ = !inQ;
+      else if (!inQ && counts.hasOwnProperty(c)) counts[c]++;
+    }
+    var delim = ",", best = 0;
+    [",", "\t", ";", "|"].forEach(function (d) {
+      if (counts[d] > best) { best = counts[d]; delim = d; }
+    });
+    return lines.map(function (line) {
+      var out = "", col = 0, cell = "", q = false;
+      var flush = function () {
+        out += '<span class="hl-col' + (col % 7) + '">' + esc(cell) + "</span>";
+        cell = "";
+      };
+      for (var k = 0; k < line.length; k++) {
+        var ch = line[k];
+        /* Curly quotes guard doc annotations the same way real quotes guard cells. */
+        if (ch === '"' || ch === '\u201c' || ch === '\u201d') { q = !q; cell += ch; }
+        else if (!q && ch === delim) {
+          flush();
+          out += '<span class="hl-dim">' + esc(ch) + "</span>";
+          col++;
+        } else { cell += ch; }
+      }
+      flush();
+      return out;
+    }).join("\n");
+  }
+  try {
+    document.querySelectorAll("pre[data-lang]").forEach(function (pre) {
+      var lang = pre.getAttribute("data-lang");
+      var code = pre.querySelector("code") || pre;
+      var src = code.textContent;
+      if (lang === "csv" || lang === "tsv" || lang === "ssv" || lang === "psv") {
+        code.innerHTML = paintCsv(src);
+      } else if (LANGS[lang]) {
+        code.innerHTML = paint(src, LANGS[lang].re, LANGS[lang].classes);
+      }
+    });
+  } catch (err) { /* plain text is fine */ }
+})();
+</script>
+</body>
+</html>
