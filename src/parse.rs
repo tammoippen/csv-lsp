@@ -724,7 +724,7 @@ mod tests {
     #[test]
     fn the_parser_is_total_over_the_corpus() {
         for text in CORPUS {
-            for dialect in [Dialect::Csv, Dialect::Tsv, Dialect::Ssv] {
+            for dialect in Dialect::ALL {
                 let table = parse(text, dialect);
                 for row in &table.rows {
                     assert_char_boundaries(text, row.span);
@@ -795,5 +795,7 @@ mod tests {
         assert_eq!(cell_slices(text, &ssv), [["a", "b\tc"]]);
         let tsv = parse(text, Dialect::Tsv);
         assert_eq!(cell_slices(text, &tsv), [["a;b", "c"]]);
+        let psv = parse("a|b;c\n", Dialect::Psv);
+        assert_eq!(cell_slices("a|b;c\n", &psv), [["a", "b;c"]]);
     }
 }
