@@ -25,8 +25,8 @@ Show
 Sleep 2.5s
 Type " a"
 Sleep 2s
-# Entries: Reinterpret as TSV / as SSV / as PSV / Convert to SSV / …  → pick entry 2.
-Down 1
+# Fifth Entries: Reinterpret as TSV / as SSV / as PSV / Convert to SSV / …  → pick entry 2.
+Down 4
 Sleep 800ms
 Enter
 Sleep 2.5s
@@ -34,9 +34,7 @@ Sleep 2.5s
 # The short `scheibe;0,10` row is flagged now. Complete it.
 Type "ge"
 Sleep 500ms
-Type "gl"
-Sleep 300ms
-Type "a"
+Type "A"
 Sleep 300ms
 Type ";25"
 Sleep 300ms
@@ -45,8 +43,8 @@ Sleep 2s
 
 Type " a"
 Sleep 2s
-# Entries: Align columns / Reinterpret as CSV / TSV / PSV / Convert to CSV / … → entry 5.
-Down 4
+# Third Entry: 
+Down 2
 Sleep 800ms
 Enter
 Sleep 3s

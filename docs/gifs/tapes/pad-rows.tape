@@ -36,7 +36,8 @@ Type "gg"
 Sleep 800ms
 Type " a"
 Sleep 2s
-# First entry now: "Pad all short rows (1)" (no quickfix on a complete row).
+# Third entry now: "Pad all short rows (1)" (no quickfix on a complete row).
+Down 2
 Enter
 Sleep 3s
 
