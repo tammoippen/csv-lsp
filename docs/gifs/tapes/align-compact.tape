@@ -27,7 +27,7 @@ Sleep 2.5s
 
 Type " a"
 Sleep 1.5s
-# Third entry: "Compact columns" (the file is aligned and clean, so nothing outranks it).
+# Entries: Quote cell / Quote column / Compact columns / …  → entry 3.
 Down 2
 Enter
 Sleep 2.5s

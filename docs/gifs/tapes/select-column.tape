@@ -1,6 +1,12 @@
-# Space+h turns the column under the cursor into one selection per cell (empty cells
-# become bare cursors); c edits every cell at once.
+# Space+h turns the column under the cursor into one selection per cell;
+# c edits every cell at once.
 # Run from the repository root:  vhs docs/gifs/tapes/select-column.tape
+#
+# Deliberately uses a column WITHOUT empty cells: Helix selections are never
+# zero-width, so on an empty cell the "bare cursor" sits on the delimiter that
+# follows it — `c` would change that delimiter and merge two cells. Filling
+# empty cells works with `i` instead; try it on docs/gifs/samples/highlight.csv
+# (see docs/features.html#select-column).
 Output docs/gifs/select-column.gif
 Require hx
 Require csv-lsp
@@ -14,7 +20,7 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 60ms
 
 Hide
-Type "cp docs/gifs/samples/highlight.csv /tmp/demo.csv && hx /tmp/demo.csv"
+Type "cp docs/gifs/samples/columns.csv /tmp/demo.csv && hx /tmp/demo.csv"
 Enter
 Sleep 3s
 Show
@@ -24,7 +30,7 @@ Type "/bolt"
 Enter
 Sleep 800ms
 
-# Select every cell of the "name" column — note the bare cursor in the empty cell.
+# Select every cell of the "name" column — header included, one selection per cell.
 Type " h"
 Sleep 2.5s
 

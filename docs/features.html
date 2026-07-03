@@ -56,12 +56,15 @@ pub trait ActionProvider {
       (<code>"abc"  ,</code>) is tolerated because alignment produces exactly that.</li>
 </ul>
 
-<p>In Helix, <kbd>Space</kbd><kbd>a</kbd> opens the code-action menu. For a given cursor the
-server answers in a fixed order (providers run in registration order):
-<em>Pad row</em> (quickfix, preferred) → <em>Pad all short rows</em> → <em>Align columns</em> →
-<em>Compact columns</em> → <em>Reinterpret as …</em> ×3 → <em>Convert to …</em> ×3 → <em>Quote cell</em> →
-<em>Quote column</em> → <em>Add column left/right</em> → <em>Delete column</em> — each entry present only
-when applicable (clients may additionally sort preferred entries first).</p>
+<p>In Helix, <kbd>Space</kbd><kbd>a</kbd> opens the code-action menu. The server answers in a
+fixed order (providers run in registration order), but <strong>Helix re-sorts the menu by
+action kind</strong> before showing it. Observed with current Helix, the groups are: the
+preferred quickfix first (<em>Pad row …</em>), then the <code>refactor.rewrite</code> entries
+(<em>Quote cell</em>, <em>Quote column</em>), then every <code>source</code> entry in server order
+(<em>Pad all short rows</em>, <em>Align</em>/<em>Compact columns</em>, <em>Reinterpret as …</em> ×3,
+<em>Convert to …</em> ×3), and the plain <code>refactor</code> entries last (<em>Add column left/right</em>,
+<em>Delete column</em>) — each entry present only when applicable. The
+<a href="#recording">recording tapes</a> encode this sorted order in their <code>Down</code> counts.</p>
 
 <h2 id="diagnostics"><a class="anchor" href="#diagnostics">Diagnostics</a></h2>
 
@@ -321,11 +324,13 @@ dialect by accident.</p>
 <p><strong>Manual:</strong></p>
 <ol>
   <li>Open the copy of <code>docs/gifs/samples/preise.csv</code> — semicolon content under a
-      <code>.csv</code> name. Note: <em>no</em> diagnostics, because as CSV this parses as one column per
-      row; the missing cell in the last row is invisible.</li>
-  <li><kbd>Space</kbd><kbd>a</kbd>, pick <em>Reinterpret as SSV</em>. Instantly the short last row gets
-      its <span class="pill">row-missing-cells</span> squiggle — the server now sees three columns.</li>
-  <li>Fix the row (append <code>;250</code>), or leave it and point at the diagnostic.</li>
+      <code>.csv</code> name. The diagnostics are <em>garbage</em>: under CSV rules the decimal commas
+      split cells, so every row reports “row has 2 cells, expected 1” — the wrong dialect
+      makes the server confidently wrong.</li>
+  <li><kbd>Space</kbd><kbd>a</kbd>, pick <em>Reinterpret as SSV</em>. The nonsense vanishes; only the
+      genuinely short last row keeps a <span class="pill">row-missing-cells</span> squiggle —
+      the server now sees three columns.</li>
+  <li>Fix the row (append <code>;25</code>), or leave it and point at the diagnostic.</li>
   <li><kbd>Space</kbd><kbd>a</kbd>, pick <em>Convert to CSV</em> — semicolons become commas and
       <code>1,50</code> gains quotes: <code>bolzen,"1,50"</code>. Diagnostics stay sane: the server flipped
       the dialect with the applied edit.</li>
@@ -472,15 +477,26 @@ that response into one selection per range. Column selection, no protocol extens
 <ul>
   <li>The ranges are <em>content</em> spans, not full cell spans: multi-cursor edits operate on
       values while alignment padding survives.</li>
-  <li>An empty cell contributes a zero-width range — Helix places a bare cursor there,
-      ready for typing. Exactly what you want when filling a column.</li>
+  <li>An empty cell contributes a zero-width range, which Helix shows as a bare cursor on
+      the spot where the value belongs.</li>
   <li>Row participation mirrors the column-edit rule: clean rows that have the column,
       header included; ranges arrive in document order.</li>
 </ul>
 
-<p>Daily use: <kbd>Space</kbd><kbd>h</kbd>, then <kbd>c</kbd> to change every cell, <kbd>A</kbd> to
+<p>Daily use: <kbd>Space</kbd><kbd>h</kbd>, then <kbd>c</kbd> to change every cell, <kbd>a</kbd> to
 append to each, or pipe the selections through a shell command — ordinary Helix
 multi-cursor editing, scoped to a column.</p>
+
+<div class="note">
+<span class="callout-label">Empty cells: use i, not c</span>
+<p>Helix selections are never empty — a zero-width range arrives as a one-character
+selection sitting on the delimiter <em>after</em> the empty cell. Insert (<kbd>i</kbd>) lands
+exactly inside the empty cell, but <kbd>c</kbd> would change the delimiter itself and merge
+two cells (the live diagnostics will tell you immediately). Rule of thumb:
+<kbd>c</kbd> to rewrite a column without empty cells, <kbd>i</kbd> to fill or prefix when empty
+cells are in play — try both on <code>docs/gifs/samples/highlight.csv</code>, whose
+<code>name</code> column keeps one empty cell for exactly this experiment.</p>
+</div>
 
 <figure class="gif" id="gif-select">
   <img src="gifs/select-column.gif" alt="Selecting a whole column with Space+h in Helix and editing every cell at once"
@@ -494,16 +510,16 @@ multi-cursor editing, scoped to a column.</p>
 <p><strong>Automated:</strong> <code>vhs docs/gifs/tapes/select-column.tape</code></p>
 <p><strong>Manual:</strong></p>
 <ol>
-  <li>Open the copy of <code>docs/gifs/samples/highlight.csv</code>; cursor into the <code>name</code>
+  <li>Open the copy of <code>docs/gifs/samples/columns.csv</code>; cursor into the <code>name</code>
       column (any row).</li>
-  <li><kbd>Space</kbd><kbd>h</kbd> — every cell of the column is selected; the empty cell in
-      row 3 shows as a bare cursor.</li>
+  <li><kbd>Space</kbd><kbd>h</kbd> — every cell of the column is selected, header included.</li>
   <li>Press <kbd>c</kbd>, type a replacement (e.g. <code>part</code>), <kbd>Esc</kbd> — every cell of the
-      column now reads the same, including the previously empty one.</li>
+      column now reads the same.</li>
   <li>Press <kbd>u</kbd> to undo, pause, quit with <code>:q!</code>.</li>
 </ol>
-<p><em>Show:</em> per-cell selections (not a block selection); the empty-cell cursor; padding and
-neighboring columns untouched.</p>
+<p><em>Show:</em> per-cell selections (not a block selection); padding and neighboring columns
+untouched. The recording sticks to a column without empty cells — see the note above for
+why <kbd>c</kbd> and empty cells don’t mix.</p>
 </details>
 
 <h2 id="rainbow"><a class="anchor" href="#rainbow">Rainbow columns (tree-sitter grammar)</a></h2>
@@ -652,7 +668,8 @@ Sleep 2.5s                              # linger on the aligned state
 
 Type " a"                               # Space then a = code-action menu
 Sleep 1.5s
-Enter                                   # first entry: Compact columns
+Down 2                                  # entry 3: Compact columns — Helix lists
+Enter                                   # the two quote refactors first
 Sleep 2.5s
 
 Hide
@@ -661,11 +678,12 @@ Enter</code></pre>
 
 <div class="warn">
 <span class="callout-label">Caveat · menu positions</span>
-<p>Tapes select code-action entries by position (<code>Down</code> × n + <code>Enter</code>), relying on the
-server’s deterministic order (<a href="#anatomy">listed above</a>). Helix versions may sort the
-menu differently (preferred entries first) or add entries if your sample state drifts —
-if a recording picks the wrong action, adjust the <code>Down</code> count in the tape. Each tape
-has a comment marking every selection with the entry it expects.</p>
+<p>Tapes select code-action entries by position (<code>Down</code> × n + <code>Enter</code>). The counts
+match <strong>Helix’s kind-sorted menu</strong> (<a href="#anatomy">the grouping above</a>) as observed
+with current Helix — a future Helix may sort differently, and entries appear only when
+applicable, so drifted sample state also shifts positions. If a recording picks the
+wrong action, adjust the <code>Down</code> count; each selection in every tape carries a comment
+naming the entry it expects.</p>
 </div>
 
 <h3 id="recording-polish">Polish</h3>

@@ -1,8 +1,8 @@
 # Quote the cell under the cursor, then the whole column; quoted cells are skipped
 # and a fully-quoted column offers nothing.
 # Run from the repository root:  vhs docs/gifs/tapes/quote.tape
-# Menu positions assume the server's deterministic action order (docs/features.html#anatomy);
-# adjust the Down counts if your Helix version sorts the menu differently.
+# Menu selections are by position (Down counts) and match Helix's kind-sorted menu
+# (docs/features.html#anatomy); adjust the counts if your Helix version sorts differently.
 Output docs/gifs/quote.gif
 Require hx
 Require csv-lsp
@@ -27,7 +27,7 @@ Enter
 Sleep 800ms
 Type " a"
 Sleep 2s
-# First Entries
+# First entry: Quote cell (the rewrite refactors sort to the top on a clean file).
 Sleep 800ms
 Enter
 Sleep 2.5s

@@ -1,7 +1,7 @@
 # Add an empty column right of "id", then delete it again — a byte-identical round trip.
 # Run from the repository root:  vhs docs/gifs/tapes/columns.tape
-# Menu positions assume the server's deterministic action order (docs/features.html#anatomy);
-# adjust the Down counts if your Helix version sorts the menu differently.
+# Menu selections are by position (Down counts) and match Helix's kind-sorted menu
+# (docs/features.html#anatomy); adjust the counts if your Helix version sorts differently.
 Output docs/gifs/columns.gif
 Require hx
 Require csv-lsp
@@ -24,8 +24,8 @@ Show
 Sleep 1.5s
 Type " a"
 Sleep 2s
-# Entries: Align / Reinterpret ×3 / Convert ×3 / Quote cell / Quote column /
-#          Add column left / Add column right / Delete column  → entry 11.
+# Entries: Quote cell / Quote column / Align / Reinterpret ×3 / Convert ×3 /
+#          Add column left / Add column right / Delete column  → entry 11: Add right.
 Down 10
 Sleep 800ms
 Enter
@@ -36,7 +36,7 @@ Type "3l"
 Sleep 800ms
 Type " a"
 Sleep 2s
-# Same list, but the delete now targets "Delete column #2" → entry 12.
+# Same list for the headerless column → entry 12: Delete column #2.
 Down 11
 Sleep 800ms
 Enter
