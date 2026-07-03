@@ -33,7 +33,10 @@ src/
     ├── align.rs          action + formatting: align columns
     └── compact.rs        action: remove alignment padding
 tests/
-└── e2e.rs                black-box protocol tests over lsp_server::Connection::memory()
+├── e2e.rs                black-box protocol tests over lsp_server::Connection::memory()
+├── stdio.rs              smoke test of the real binary's stdio framing
+├── properties.rs         proptest invariant suite over generated documents (ADR 0004)
+└── protocol.rs           proptest hostile-client sessions against the real server
 ```
 
 **Extensibility rule:** feature N+1 = one new file in `src/features/` + one line in
@@ -78,7 +81,10 @@ Invariants:
   (delimiter/quote/CR/LF are ASCII and can never occur inside a UTF-8 multibyte
   sequence, so a byte-wise scanner is safe).
 - Padding is *derived*, not stored: leading = `span.start..content_span.start`,
-  trailing = `content_span.end..span.end`. Padding is ASCII space only.
+  trailing = `content_span.end..span.end`. Padding is ASCII space only — except
+  that a `TextAfterClosingQuote` cell's trailing range holds the garbage bytes
+  (such rows are passed through verbatim, so the renderer never treats them as
+  padding).
 - `Cell::value(&text) -> Cow<str>` decodes lazily; it only allocates when `""`
   unescaping is required.
 - A `Row` is *blank* iff it has exactly one unquoted cell with empty content. Blank
@@ -194,9 +200,16 @@ pub fn encode_cell(value: &str, dialect: Dialect, force_quote: bool) -> String;
 ```
 
 Align and compact are the *same* pipeline with `align: Some(widths)` vs `None`.
+One data-integrity exception to "pure whitespace transform": a first cell whose
+content starts with U+FEFF is force-quoted (and measured two cells wider by
+`column_widths`), because at byte 0 of the output it would be re-read as a
+file-level BOM and silently vanish from the value.
 `edits::minimize(old, new)` turns a full re-render into at most one small
-`TextEdit` by trimming the common prefix/suffix (char-boundary-snapped), which keeps
-the editor cursor stable and makes formatting idempotent (`[]` when already aligned).
+`TextEdit` by trimming the common prefix/suffix, snapped to `char` boundaries
+*and off the middle of CRLF breaks* — an LSP position cannot address the point
+between `\r` and `\n`, so a boundary there would be misapplied by conforming
+clients. This keeps the editor cursor stable and makes formatting idempotent
+(`[]` when already aligned).
 
 ## Backlog
 
