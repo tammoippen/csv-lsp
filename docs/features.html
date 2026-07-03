@@ -573,12 +573,30 @@ recording shows; the sample files they open live in <code>docs/gifs/samples/</co
       <a href="quickstart.html">quickstart</a> (the tapes assume <kbd>Space</kbd><kbd>a</kbd>,
       <code>:format</code> and <kbd>Space</kbd><kbd>h</kbd> reach csv-lsp). Verify with
       <code>hx --health csv</code> first — a misconfigured server records an empty menu.</li>
-  <li><strong>VHS</strong>: <code>brew install vhs</code> or <code>go install github.com/charmbracelet/vhs@latest</code>
-      (VHS bundles its own headless terminal via ttyd and needs <code>ffmpeg</code>; the package
-      managers pull both in).</li>
+  <li><strong>VHS</strong>: <code>brew install vhs</code> (pulls its two runtime dependencies in) or
+      <code>go install github.com/charmbracelet/vhs@latest</code> — the go route installs
+      <em>only</em> vhs, so make sure <a href="https://github.com/tsl0922/ttyd">ttyd</a>
+      <strong>≥ 1.7.2</strong> and <code>ffmpeg</code> are on your <code>PATH</code> yourself.</li>
   <li>A font with the sample glyphs (the messy sample contains <code>é</code> and <code>名前</code>) — the
       default VHS font handles them.</li>
 </ol>
+
+<div class="warn">
+<span class="callout-label">If vhs fails with “could not open ttyd: navigation failed: net::ERR_CONNECTION_REFUSED”</span>
+<p>VHS records by pointing a headless browser at a local <em>ttyd</em> terminal server;
+“connection refused” means ttyd exited at startup instead of listening. By far the most
+common cause: the installed ttyd is <strong>too old</strong> — VHS passes flags that need
+ttyd ≥ 1.7.2, while distro packages (Debian/Ubuntu <code>apt</code>) often still ship 1.6.x,
+which quits with “unrecognized option”. Check it directly:</p>
+<pre data-lang="sh"><code>ttyd --version                      # need ≥ 1.7.2
+ttyd --writable --port 7681 bash    # must keep running (Ctrl-C to stop);
+                                    # "unrecognized option" ⇒ too old</code></pre>
+<p>Fix by installing a current ttyd: <code>brew install ttyd</code>, or grab a static binary
+from the <a href="https://github.com/tsl0922/ttyd/releases">ttyd releases</a>. Two rarer
+causes with the same symptom: <code>ffmpeg</code> missing (<code>ffmpeg -version</code>), and an HTTP
+proxy configured in your shell intercepting localhost — retry with
+<code>NO_PROXY="localhost,127.0.0.1" vhs …</code>.</p>
+</div>
 
 <h3 id="recording-run">Recording</h3>
 
