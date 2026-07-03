@@ -205,9 +205,10 @@ CSV_LSP_LOG=1 hx -v data.csv    # then check ~/.cache/helix/helix.log
 
 ## Development
 
-The documentation lives in [`docs/`](docs/) as self-contained HTML pages —
-clone the repo and open `docs/index.html` in a browser (no build step, no
-network needed):
+The documentation lives in [`docs/`](docs/) as plain HTML pages, published
+at **<https://tammoippen.github.io/csv-lsp/>** via GitHub Pages (redeployed
+on every push to main). Locally, just open `docs/index.html` in a browser —
+no build step:
 
 - `docs/quickstart.html` — install, Helix setup, a sixty-second tour
 - `docs/features.html` — every feature in depth, plus the GIF recording kit
