@@ -66,6 +66,14 @@ the rules that apply to all of them.
   the test — no snapshot framework, no extra dependency.
 - **Corpus test**: the parser is *total*. A list of malformed snippets × all dialects
   is parsed and re-rendered; the only assertion is "no panic, spans in bounds".
+- **Property tests** (`tests/properties.rs`, `tests/protocol.rs`, ADR 0004): `proptest`
+  generates CSV-shaped documents and hostile protocol traffic and asserts the
+  documented invariants over them (parser totality, render round-trips, position
+  round-trips, the action edit contract, clean shutdown). They run under plain
+  `cargo test`; deepen locally with `PROPTEST_CASES=10000 cargo test`. When proptest
+  finds a counterexample it shrinks it and writes a seed file next to the suite
+  (`tests/*.proptest-regressions`) — **commit that file** so CI replays the failure
+  first.
 - Test names describe behavior (`padding_is_trimmed_from_unquoted_cells`), not methods
   (`test_parse_2`).
 
@@ -87,7 +95,8 @@ the rules that apply to all of them.
 ## Dependencies
 
 Four direct dependencies (`lsp-server`, `lsp-types`, `serde_json`, `unicode-width`) —
-see ADRs. Adding a dependency requires an ADR-worthy reason. `Cargo.lock` is
+see ADRs — plus `proptest` as a dev-dependency (ADR 0004; the shipped binary is
+unaffected). Adding a dependency requires an ADR-worthy reason. `Cargo.lock` is
 **committed** (this is a binary — reproducible builds trump lockfile churn).
 
 ## CI
