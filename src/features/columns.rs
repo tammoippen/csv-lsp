@@ -84,6 +84,17 @@ fn delete_span(row: &Row, column: usize) -> Span {
     }
 }
 
+/// The content spans of a column across clean rows (header included), in
+/// document order — the payload behind `textDocument/documentHighlight`,
+/// which Helix turns into a per-cell multi-selection (`Space+h`), giving
+/// column selection.
+pub fn column_content_spans(table: &Table, column: usize) -> Vec<Span> {
+    let error_rows: HashSet<usize> = table.errors.iter().map(|error| error.row).collect();
+    editable_rows(table, &error_rows, column)
+        .map(|row| row.cells[column].content_span)
+        .collect()
+}
+
 /// Clean rows that have the column, in document order.
 fn editable_rows<'t>(
     table: &'t Table,
@@ -210,6 +221,20 @@ mod tests {
             action_applied(text, 0, "Delete column \"a\"").as_deref(),
             Some("\n\n")
         );
+    }
+
+    #[test]
+    fn column_content_spans_cover_clean_rows_only() {
+        let text = "id,name\n1,x\n\n2,\n5\" b,y\nz\n";
+        let doc = doc(text);
+        let spans = column_content_spans(&doc.table, 1);
+
+        // Header + `x` + the empty cell; the blank row, the stray-quote row
+        // and the short `z` row contribute nothing.
+        let slices: Vec<_> = spans.iter().map(|span| span.slice(text)).collect();
+        assert_eq!(slices, ["name", "x", ""]);
+        assert!(spans[2].is_empty());
+        assert_eq!(spans[2].start, text.find("2,").unwrap() + 2);
     }
 
     #[test]

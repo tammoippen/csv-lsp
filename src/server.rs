@@ -14,11 +14,14 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Notification as _,
     PublishDiagnostics,
 };
-use lsp_types::request::{CodeActionRequest, ExecuteCommand, Formatting, Request as _};
+use lsp_types::request::{
+    CodeActionRequest, DocumentHighlightRequest, ExecuteCommand, Formatting, Request as _,
+};
 use lsp_types::{
     CodeAction, CodeActionOrCommand, CodeActionParams, Command, Diagnostic, DiagnosticSeverity,
-    DocumentFormattingParams, ExecuteCommandParams, InitializeParams, NumberOrString,
-    PublishDiagnosticsParams, TextEdit, Uri, WorkspaceEdit,
+    DocumentFormattingParams, DocumentHighlight, DocumentHighlightKind, DocumentHighlightParams,
+    ExecuteCommandParams, InitializeParams, NumberOrString, PublishDiagnosticsParams, TextEdit,
+    Uri, WorkspaceEdit,
 };
 
 use crate::capabilities;
@@ -259,6 +262,13 @@ fn dispatch_request(
             // response itself is empty.
             Ok(Response::new_ok(id, serde_json::Value::Null))
         }
+        DocumentHighlightRequest::METHOD => {
+            let (id, params) = cast_request::<DocumentHighlightRequest>(request)?;
+            Ok(Response::new_ok(
+                id,
+                handle_document_highlight(state, &params),
+            ))
+        }
         _ => Ok(Response::new_err(
             request.id,
             ErrorCode::MethodNotFound as i32,
@@ -411,6 +421,30 @@ fn handle_execute_command(
         })?;
     }
     Ok(())
+}
+
+/// Highlight every cell of the column under the cursor. Helix turns these
+/// ranges into multi-selections (`Space+h`), which is how "select the
+/// column" works; `None` when the cursor is on no cell — clients call this
+/// speculatively.
+fn handle_document_highlight(
+    state: &ServerState,
+    params: &DocumentHighlightParams,
+) -> Option<Vec<DocumentHighlight>> {
+    let position = &params.text_document_position_params;
+    let doc = state.store.get(&position.text_document.uri)?;
+    let offset = doc
+        .line_index
+        .offset(&doc.text, position.position, state.encoding);
+    let (_, column) = doc.table.cell_at(offset)?;
+    let highlights = crate::features::columns::column_content_spans(&doc.table, column)
+        .into_iter()
+        .map(|span| DocumentHighlight {
+            range: doc.line_index.range(&doc.text, span, state.encoding),
+            kind: Some(DocumentHighlightKind::TEXT),
+        })
+        .collect();
+    Some(highlights)
 }
 
 /// Formatting = align columns. `FormattingOptions` (tab width etc.) carry
