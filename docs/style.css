@@ -1,7 +1,14 @@
 /* csv-lsp documentation — the one shared stylesheet.
    Referenced relatively by every page, so it works from file:// and from
-   GitHub Pages alike (see contributing.html#docs). */
+   GitHub Pages alike (see contributing.html#docs).
+
+   Theming: the light palette is the default; the dark palette applies when
+   the system prefers dark (unless the toggle forces light) or when the
+   toggle forces dark (docs.js sets data-theme on <html>). CSS cannot share
+   a block between a media query and an attribute selector, so the dark
+   palette appears twice — keep both copies identical. */
 :root {
+  color-scheme: light;
   --bg: #ffffff;
   --surface: #f6f8fa;
   --inset: #eef1f4;
@@ -19,7 +26,8 @@
   --col-4: #0550ae; --col-5: #6639ba; --col-6: #99286e;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #0d1117;
     --surface: #161b22;
     --inset: #1c2129;
@@ -36,6 +44,24 @@
     --col-0: #ff7b72; --col-1: #f0883e; --col-2: #d29922; --col-3: #3fb950;
     --col-4: #58a6ff; --col-5: #bc8cff; --col-6: #f778ba;
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --surface: #161b22;
+  --inset: #1c2129;
+  --fg: #e6edf3;
+  --muted: #9198a1;
+  --border: #30363d;
+  --accent: #4493f8;
+  --accent-bg: #121d2f;
+  --ok: #3fb950;
+  --warn: #d29922;
+  --err: #f85149;
+  --hl-k: #ff7b72; --hl-s: #a5d6ff; --hl-c: #8b949e; --hl-t: #ffa657;
+  --hl-f: #d2a8ff; --hl-n: #79c0ff; --hl-a: #7ee787; --hl-dim: #8b949e;
+  --col-0: #ff7b72; --col-1: #f0883e; --col-2: #d29922; --col-3: #3fb950;
+  --col-4: #58a6ff; --col-5: #bc8cff; --col-6: #f778ba;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -68,6 +94,18 @@ header nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; font-size: 0.9
 header nav a { color: var(--muted); text-decoration: none; padding: 0.1rem 0; }
 header nav a:hover { color: var(--fg); }
 header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+.theme-toggle {
+  margin-left: auto;
+  font: inherit; font-size: 0.8rem;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.12rem 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.theme-toggle:hover { color: var(--fg); border-color: var(--accent); }
 main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
 footer {
   max-width: 60rem; margin: 0 auto; padding: 1.25rem;

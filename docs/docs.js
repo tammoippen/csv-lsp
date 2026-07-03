@@ -1,9 +1,70 @@
-/* csv-lsp documentation — the one shared script: a tiny syntax highlighter.
-   Progressive enhancement; the pages read fine as plain text without it.
-   One alternation regex per language; the first defined capture group
-   decides the color. */
+/* csv-lsp documentation — the one shared script.
+
+   1. Theme: applies the stored light/dark override before first paint (this
+      file is loaded synchronously in <head> for exactly that reason) and
+      mounts the header toggle. Default is the system preference; an explicit
+      choice is remembered per browser in localStorage.
+   2. Syntax highlighting: a tiny highlighter — progressive enhancement, the
+      pages read fine as plain text without it. One alternation regex per
+      language; the first defined capture group decides the color. */
 (function () {
   "use strict";
+
+  /* ---------- theme ---------- */
+  var THEME_KEY = "csv-lsp-docs-theme";
+  var root = document.documentElement;
+  function storedTheme() {
+    try {
+      var v = localStorage.getItem(THEME_KEY);
+      return v === "light" || v === "dark" ? v : null;
+    } catch (err) {
+      return null;
+    }
+  }
+  function applyTheme(mode) {
+    if (mode) root.setAttribute("data-theme", mode);
+    else root.removeAttribute("data-theme");
+  }
+  applyTheme(storedTheme()); // runs pre-paint — no flash of the wrong theme
+
+  var MODES = [
+    { key: null,    label: "◐ auto",  hint: "Theme follows the system preference — click for light" },
+    { key: "light", label: "☀ light", hint: "Theme forced light — click for dark" },
+    { key: "dark",  label: "☾ dark",  hint: "Theme forced dark — click to follow the system" }
+  ];
+  function mountToggle() {
+    var headerInner = document.querySelector("header .header-inner");
+    if (!headerInner) return;
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "theme-toggle";
+    var current = storedTheme();
+    function modeIndex() {
+      for (var i = 0; i < MODES.length; i++) {
+        if (MODES[i].key === current) return i;
+      }
+      return 0;
+    }
+    function render() {
+      var mode = MODES[modeIndex()];
+      btn.textContent = mode.label;
+      btn.title = mode.hint;
+      btn.setAttribute("aria-label", mode.hint);
+    }
+    btn.addEventListener("click", function () {
+      current = MODES[(modeIndex() + 1) % MODES.length].key;
+      try {
+        if (current) localStorage.setItem(THEME_KEY, current);
+        else localStorage.removeItem(THEME_KEY);
+      } catch (err) { /* private mode: the choice still applies to this page */ }
+      applyTheme(current);
+      render();
+    });
+    render();
+    headerInner.appendChild(btn);
+  }
+
+  /* ---------- syntax highlighting ---------- */
   var esc = function (s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   };
@@ -75,7 +136,7 @@
       for (var k = 0; k < line.length; k++) {
         var ch = line[k];
         /* Curly quotes guard doc annotations the same way real quotes guard cells. */
-        if (ch === '"' || ch === '\u201c' || ch === '\u201d') { q = !q; cell += ch; }
+        if (ch === '"' || ch === '“' || ch === '”') { q = !q; cell += ch; }
         else if (!q && ch === delim) {
           flush();
           out += '<span class="hl-dim">' + esc(ch) + "</span>";
@@ -86,16 +147,28 @@
       return out;
     }).join("\n");
   }
-  try {
-    document.querySelectorAll("pre[data-lang]").forEach(function (pre) {
-      var lang = pre.getAttribute("data-lang");
-      var code = pre.querySelector("code") || pre;
-      var src = code.textContent;
-      if (lang === "csv" || lang === "tsv" || lang === "ssv" || lang === "psv") {
-        code.innerHTML = paintCsv(src);
-      } else if (LANGS[lang]) {
-        code.innerHTML = paint(src, LANGS[lang].re, LANGS[lang].classes);
-      }
-    });
-  } catch (err) { /* plain text is fine */ }
+  function highlightAll() {
+    try {
+      document.querySelectorAll("pre[data-lang]").forEach(function (pre) {
+        var lang = pre.getAttribute("data-lang");
+        var code = pre.querySelector("code") || pre;
+        var src = code.textContent;
+        if (lang === "csv" || lang === "tsv" || lang === "ssv" || lang === "psv") {
+          code.innerHTML = paintCsv(src);
+        } else if (LANGS[lang]) {
+          code.innerHTML = paint(src, LANGS[lang].re, LANGS[lang].classes);
+        }
+      });
+    } catch (err) { /* plain text is fine */ }
+  }
+
+  function onReady() {
+    mountToggle();
+    highlightAll();
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", onReady);
+  } else {
+    onReady();
+  }
 })();

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contributing · csv-lsp docs</title>
 <link rel="stylesheet" href="style.css">
+<script src="docs.js"></script>
 </head>
 <body>
 <header>
@@ -315,9 +316,12 @@ in order of appetite:</p>
   <li>The pages are plain static HTML, deployed by GitHub Pages from <code>docs/</code> to
       <a href="https://tammoippen.github.io/csv-lsp/">tammoippen.github.io/csv-lsp</a>
       (<code>.github/workflows/pages.yml</code> redeploys on every push to main that touches
-      <code>docs/</code>). Shared look and behavior live in <code>style.css</code> and <code>docs.js</code>; there is
-      no build step and no external asset — everything loads relatively, so opening a
-      page from a clone via <code>file://</code> works too.</li>
+      <code>docs/</code>). Shared look and behavior live in <code>style.css</code> and <code>docs.js</code> (theme
+      toggle + syntax highlighting; the script loads in <code>&lt;head&gt;</code> so a stored theme
+      applies before first paint). There is no build step and no external asset —
+      everything loads relatively, so opening a page from a clone via <code>file://</code>
+      works too. The dark palette appears twice in <code>style.css</code> (media query and
+      <code>data-theme</code> override) — keep both copies identical.</li>
   <li>Three artifacts must stay in sync when behavior changes: the <strong>prose invariant</strong>
       (<a href="parser.html#invariants">parser page</a>), the <strong>property</strong> that checks it
       (<a href="testing.html#invariant-map">invariant map</a>), and the <strong>code</strong>. A change to one
@@ -336,6 +340,5 @@ in order of appetite:</p>
 
 </main>
 <footer>csv-lsp · MIT · <a href="https://github.com/tammoippen/csv-lsp">github.com/tammoippen/csv-lsp</a></footer>
-<script src="docs.js"></script>
 </body>
 </html>
