@@ -354,6 +354,56 @@ fn applying_a_conversion_flips_the_dialect() {
 }
 
 #[test]
+fn psv_files_parse_and_convert_with_pipe_delimiters() {
+    let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
+    let uri: Uri = "file:///t/report.psv".parse().unwrap();
+    let text = "id|name\n1|a,b\n2\n"; // short row 3; row 2 hides a comma
+    client.open(&uri, "psv", 1, text);
+
+    // Pipes delimit: exactly the short row is flagged.
+    let published = client.recv_diagnostics();
+    assert_eq!(published.diagnostics.len(), 1);
+    assert_eq!(
+        published.diagnostics[0].code,
+        Some(NumberOrString::String("row-missing-cells".into()))
+    );
+    assert_eq!(published.diagnostics[0].range.start.line, 2);
+
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    let to_csv = actions
+        .iter()
+        .find(|action| action.title == "Convert to CSV")
+        .expect("csv conversion offered");
+    let converted = apply_edits(text, &edits_for(to_csv, &uri), PositionEncoding::Utf8);
+    // Quoting adapts: the cell containing a comma gets protected.
+    assert_eq!(converted, "id,name\n1,\"a,b\"\n2\n");
+
+    client.change(&uri, 2, &converted);
+    // Same single diagnostic under the new dialect.
+    assert_eq!(client.recv_diagnostics().diagnostics.len(), 1);
+
+    // The dialect flipped: the way back to PSV is offered.
+    let actions = code_actions(
+        &mut client,
+        &uri,
+        cursor(0, 0),
+        Some(vec![CodeActionKind::SOURCE]),
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|action| action.title == "Convert to PSV")
+    );
+
+    client.shutdown();
+}
+
+#[test]
 fn manual_changes_do_not_flip_the_dialect() {
     let (mut client, _) = TestClient::start_with(&[PositionEncodingKind::UTF8]);
     let uri: Uri = "file:///t/manual.csv".parse().unwrap();

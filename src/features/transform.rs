@@ -15,7 +15,7 @@ use crate::features::{Action, ActionContext, ActionProvider};
 use crate::parse::Span;
 use crate::render::{QuotePolicy, RenderOptions, render};
 
-/// `Convert to …` for the two non-current dialects.
+/// `Convert to …` for every non-current dialect.
 pub struct ConvertDialect;
 
 /// The conversion as a minimal edit; empty when converting changes nothing
@@ -39,7 +39,7 @@ impl ActionProvider for ConvertDialect {
         if !ctx.doc.table.errors.is_empty() {
             return Vec::new();
         }
-        [Dialect::Csv, Dialect::Tsv, Dialect::Ssv]
+        Dialect::ALL
             .into_iter()
             .filter(|&target| target != ctx.doc.dialect)
             .filter_map(|target| {
@@ -73,7 +73,10 @@ mod tests {
         let actions = ConvertDialect.actions(&ctx_at(&doc, 0));
 
         let titles: Vec<_> = actions.iter().map(|action| action.title.as_str()).collect();
-        assert_eq!(titles, ["Convert to TSV", "Convert to SSV"]);
+        assert_eq!(
+            titles,
+            ["Convert to TSV", "Convert to SSV", "Convert to PSV"]
+        );
         assert_eq!(actions[0].dialect_change, Some(Dialect::Tsv));
         assert_eq!(
             apply(&doc.text, &actions[0].edits),
@@ -97,6 +100,20 @@ mod tests {
         assert_eq!(
             apply(&doc.text, &to_csv.edits),
             "artikel,preis\nbolzen,\"1,50\"\n"
+        );
+    }
+
+    #[test]
+    fn conversion_to_psv_quotes_cells_containing_pipes() {
+        let doc = doc("cmd,note\nls,a|b\n");
+        let actions = ConvertDialect.actions(&ctx_at(&doc, 0));
+        let to_psv = actions
+            .iter()
+            .find(|action| action.title == "Convert to PSV")
+            .expect("psv conversion offered");
+        assert_eq!(
+            apply(&doc.text, &to_psv.edits),
+            "cmd|note\nls|\"a|b\"\n" // the piped cell gains quotes
         );
     }
 
