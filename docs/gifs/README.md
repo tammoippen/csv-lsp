@@ -15,7 +15,14 @@ they are reproducible artifacts.
 
 Prerequisites: `csv-lsp` installed, Helix configured per
 `docs/quickstart.html#helix` (verify with `hx --health csv`), and `vhs`
-installed (`brew install vhs`).
+installed (`brew install vhs`). vhs itself needs `ttyd` **>= 1.7.2** and
+`ffmpeg` on the PATH (brew installs both; `go install` does not).
+
+If vhs fails with `could not open ttyd: navigation failed:
+net::ERR_CONNECTION_REFUSED`, your ttyd is almost certainly too old
+(Debian/Ubuntu apt ships 1.6.x) — check `ttyd --version`, upgrade via
+brew or a binary from <https://github.com/tsl0922/ttyd/releases>. Details:
+`docs/features.html#recording-prereqs`.
 
 From the **repository root**:
 
