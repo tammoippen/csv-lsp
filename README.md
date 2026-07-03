@@ -205,10 +205,17 @@ CSV_LSP_LOG=1 hx -v data.csv    # then check ~/.cache/helix/helix.log
 
 ## Development
 
-See `docs/architecture.md` (module map and data model),
-`docs/development.md` (TDD workflow, commit conventions, quality gates),
-`docs/adr/` (the language/library/parser decisions) and `docs/plan/` (the
-milestone plans this codebase was built from).
+The documentation lives in [`docs/`](docs/) as self-contained HTML pages —
+clone the repo and open `docs/index.html` in a browser (no build step, no
+network needed):
+
+- `docs/quickstart.html` — install, Helix setup, a sixty-second tour
+- `docs/features.html` — every feature in depth, plus the GIF recording kit
+  (`docs/gifs/`)
+- `docs/lsp.html` — protocol wiring, dataflow, position encodings
+- `docs/parser.html` — the error-tolerant parser and its invariants
+- `docs/testing.html` — the test pyramid and property-based testing
+- `docs/contributing.html` — structure, design decisions, workflow
 
 The short version: everything below `main.rs` is a library; all offsets are
 byte spans converted to LSP positions at one boundary; and **adding a feature

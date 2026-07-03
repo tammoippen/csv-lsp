@@ -2,7 +2,8 @@
 //!
 //! The server advertises FULL document sync, so every change replaces the
 //! whole text; derived state (line index, later the parse tree) is rebuilt
-//! eagerly — CSV parsing is O(n) and cheap (see `docs/architecture.md`).
+//! eagerly — CSV parsing is O(n) and cheap
+//! (see `docs/contributing.html#performance`).
 
 use std::collections::HashMap;
 
@@ -62,7 +63,8 @@ impl Document {
 /// All currently open documents, keyed by URI.
 ///
 /// Keys are the URI's string form: `lsp_types::Uri` is treated as opaque
-/// throughout the crate (see ADR 0002 on insulating from its churn).
+/// throughout the crate to stay insulated from its churn
+/// (see `docs/contributing.html#decisions`).
 #[derive(Debug, Default)]
 pub struct Store {
     docs: HashMap<String, Document>,

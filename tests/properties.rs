@@ -1,10 +1,10 @@
-//! Property-based invariant suite (ADR 0004) — the Hypothesis workflow in
-//! Rust, powered by `proptest`.
+//! Property-based invariant suite (`docs/testing.html#property`) — the
+//! Hypothesis workflow in Rust, powered by `proptest`.
 //!
 //! Strategies assemble documents from the parser's *interesting* bytes
 //! (delimiters, quotes, `""` escapes, all three terminators, padding, BOM,
 //! multibyte text) plus plain Unicode noise, and assert the documented
-//! invariants from `docs/architecture.md` over thousands of generated
+//! invariants from `docs/parser.html#invariants` over thousands of generated
 //! inputs: the parser is total and span-sound, renders round-trip and
 //! preserve values, edits apply, positions convert exactly in every
 //! encoding, and feature edits honor the LSP contract. Counterexamples
@@ -110,7 +110,7 @@ fn assert_span_addressable(text: &str, index: &LineIndex, span: Span) {
     }
 }
 
-/// Every structural invariant documented in `docs/architecture.md`.
+/// Every structural invariant documented in `docs/parser.html#invariants`.
 fn assert_table_sound(text: &str, table: &Table) {
     let bom_len = if table.has_bom { "\u{feff}".len() } else { 0 };
     if let Some(first) = table.rows.first() {

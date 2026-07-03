@@ -4,8 +4,8 @@
 //! [`ParseError`]s), never a failure. All spans are byte offsets into the
 //! parsed text; the delimiter, quote and line-break bytes are ASCII and can
 //! never occur inside a UTF-8 multibyte sequence, so every span boundary is
-//! a `char` boundary. See `docs/plan/m1-parser-and-diagnostics.md` for the
-//! state machine and recovery rules.
+//! a `char` boundary. See `docs/parser.html` for the state machine and
+//! recovery rules.
 
 use std::borrow::Cow;
 
