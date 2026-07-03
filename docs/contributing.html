@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contributing · csv-lsp docs</title>
+<style>
+/* csv-lsp documentation — shared inline style.
+   Duplicated verbatim in every page so each file stays self-contained;
+   if you change it, change it in all pages (see contributing.html#docs). */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --inset: #eef1f4;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #0969da;
+  --accent-bg: #ddf4ff;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --err: #cf222e;
+  --hl-k: #cf222e; --hl-s: #0a3069; --hl-c: #6e7781; --hl-t: #953800;
+  --hl-f: #8250df; --hl-n: #0550ae; --hl-a: #116329; --hl-dim: #6e7781;
+  --col-0: #cf222e; --col-1: #bc4c00; --col-2: #7d4e00; --col-3: #116329;
+  --col-4: #0550ae; --col-5: #6639ba; --col-6: #99286e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --inset: #1c2129;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --border: #30363d;
+    --accent: #4493f8;
+    --accent-bg: #121d2f;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --hl-k: #ff7b72; --hl-s: #a5d6ff; --hl-c: #8b949e; --hl-t: #ffa657;
+    --hl-f: #d2a8ff; --hl-n: #79c0ff; --hl-a: #7ee787; --hl-dim: #8b949e;
+    --col-0: #ff7b72; --col-1: #f0883e; --col-2: #d29922; --col-3: #3fb950;
+    --col-4: #58a6ff; --col-5: #bc8cff; --col-6: #f778ba;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+}
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+header::after {
+  content: ""; display: block; height: 2px;
+  background: linear-gradient(90deg, var(--col-0), var(--col-1), var(--col-3), var(--col-4), var(--col-5));
+}
+.header-inner {
+  max-width: 60rem; margin: 0 auto; padding: 0.65rem 1.25rem;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.5rem;
+}
+.brand { font-weight: 700; font-size: 1.05rem; color: var(--fg); text-decoration: none; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 400; margin-left: 0.45rem; }
+header nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; font-size: 0.95rem; }
+header nav a { color: var(--muted); text-decoration: none; padding: 0.1rem 0; }
+header nav a:hover { color: var(--fg); }
+header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+footer {
+  max-width: 60rem; margin: 0 auto; padding: 1.25rem;
+  color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border);
+}
+footer a { color: inherit; }
+h1 { font-size: 1.9rem; line-height: 1.25; letter-spacing: -0.02em; margin: 0.8rem 0 0.3rem; }
+p.lead { font-size: 1.1rem; color: var(--muted); margin-top: 0.2rem; }
+h2 { font-size: 1.45rem; letter-spacing: -0.01em; margin: 2.6rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1.15rem; margin: 1.9rem 0 0.5rem; }
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; }
+h2 a.anchor, h3 a.anchor { color: inherit; text-decoration: none; }
+h2 a.anchor:hover::after, h3 a.anchor:hover::after { content: " #"; color: var(--muted); }
+a { color: var(--accent); }
+li { margin: 0.25rem 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+strong { font-weight: 650; }
+code { background: var(--inset); border-radius: 5px; padding: 0.12em 0.35em; font-size: 0.86em; }
+pre {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 0.9rem 0;
+}
+pre code { background: none; border-radius: 0; padding: 0; font-size: 0.86rem; display: block; }
+pre[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute; top: 0.35rem; right: 0.7rem;
+  font-size: 0.68rem; color: var(--muted); font-family: inherit;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+kbd {
+  display: inline-block; padding: 0.08em 0.45em; font-size: 0.82em;
+  background: var(--surface); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 5px;
+}
+.hl-k { color: var(--hl-k); } .hl-s { color: var(--hl-s); } .hl-c { color: var(--hl-c); font-style: italic; }
+.hl-t { color: var(--hl-t); } .hl-f { color: var(--hl-f); } .hl-n { color: var(--hl-n); }
+.hl-a { color: var(--hl-a); } .hl-dim { color: var(--hl-dim); }
+.hl-col0 { color: var(--col-0); } .hl-col1 { color: var(--col-1); } .hl-col2 { color: var(--col-2); }
+.hl-col3 { color: var(--col-3); } .hl-col4 { color: var(--col-4); } .hl-col5 { color: var(--col-5); }
+.hl-col6 { color: var(--col-6); }
+.tablewrap { overflow-x: auto; margin: 0.9rem 0; }
+table { border-collapse: collapse; font-size: 0.92rem; min-width: 60%; }
+th, td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; vertical-align: top; }
+th { background: var(--surface); }
+.note, .tip, .warn, .concept {
+  border: 1px solid var(--border); border-left-width: 4px;
+  border-radius: 6px; padding: 0.7rem 1rem; margin: 1rem 0;
+  background: var(--surface);
+}
+.note { border-left-color: var(--accent); }
+.tip { border-left-color: var(--ok); }
+.warn { border-left-color: var(--warn); }
+.concept { border-left-color: var(--hl-t); }
+.note > :first-child, .tip > :first-child, .warn > :first-child, .concept > :first-child { margin-top: 0.1rem; }
+.note > :last-child, .tip > :last-child, .warn > :last-child, .concept > :last-child { margin-bottom: 0.1rem; }
+.callout-label {
+  display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+}
+.concept .callout-label { color: var(--hl-t); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 0.9rem; margin: 1.2rem 0; }
+.card {
+  display: block; border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.9rem 1rem; background: var(--surface);
+  color: inherit; text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.card:hover { border-color: var(--accent); }
+.card h3 { margin: 0 0 0.3rem; font-size: 1.02rem; color: var(--accent); }
+.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.card .card-num { float: right; color: var(--muted); font-size: 0.8rem; }
+figure.diagram { margin: 1.2rem 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption, figure.gif figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; text-align: center; }
+.d-box { fill: var(--surface); stroke: var(--border); }
+.d-box2 { fill: var(--accent-bg); stroke: var(--accent); }
+.d-txt { fill: var(--fg); font: 13px system-ui, sans-serif; }
+.d-sub { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+.d-mono { fill: var(--fg); font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-mono-sm { fill: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-edge { stroke: var(--muted); fill: none; stroke-width: 1.3; }
+.d-edge-accent { stroke: var(--accent); fill: none; stroke-width: 1.5; }
+.d-arrow { fill: var(--muted); }
+.d-arrow-accent { fill: var(--accent); }
+figure.gif { margin: 1.2rem 0; }
+figure.gif img {
+  display: block; max-width: 100%; border: 1px solid var(--border); border-radius: 10px;
+}
+figure.gif.missing img { display: none; }
+figure.gif .placeholder { display: none; }
+figure.gif.missing .placeholder {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 1px dashed var(--border); border-radius: 10px;
+  padding: 2.2rem 1rem; color: var(--muted); font-size: 0.9rem;
+  background: var(--surface);
+}
+details { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin: 0.9rem 0; background: var(--surface); }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+.prevnext {
+  display: flex; justify-content: space-between; gap: 1rem;
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+.prevnext a { text-decoration: none; }
+.prevnext .dir { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pill {
+  display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.78rem; background: var(--inset); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.05rem 0.55rem;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a class="brand" href="index.html">csv-lsp<span>docs</span></a>
+    <nav>
+      <a href="quickstart.html">Quickstart</a>
+      <a href="features.html">Features</a>
+      <a href="lsp.html">LSP</a>
+      <a href="parser.html">Parser</a>
+      <a href="testing.html">Testing</a>
+      <a href="contributing.html" aria-current="page">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<h1>Contributing</h1>
+<p class="lead">The lay of the land: how the repository is structured, the decisions and
+principles behind it, the workflow the history was built with — and the recipe for
+adding a feature.</p>
+
+<h2 id="layout"><a class="anchor" href="#layout">Repository tour</a></h2>
+
+<pre><code>src/
+├── main.rs               binary shim: stdio connection → server::run() → join I/O threads
+├── lib.rs                module tree; the log! macro; everything public so tests can drive it
+├── server.rs             ServerState, main loop, dispatch, diagnostics publishing
+├── capabilities.rs       position-encoding negotiation + advertised capabilities
+├── document.rs           Document (text + version + dialect + parse), Store (open docs)
+├── position.rs           PositionEncoding, LineIndex, byte Span ↔ lsp::Range conversion
+├── dialect.rs            Dialect (Csv|Tsv|Ssv|Psv); detection: languageId → extension → sniff → Csv
+├── parse.rs              Span, Table/Row/Cell, ParseError — the state-machine parser
+├── render.rs             Table → text: render(), column_widths(), encode_cell()
+├── edits.rs              minimize() whole-doc diffs into one edit; apply()
+└── features/
+    ├── mod.rs            Diag/Action types, the two traits, Registry::standard()   ← the ONE registration point
+    ├── parse_errors.rs   rule: quoting errors → diagnostics
+    ├── ragged_rows.rs    rule: cell count vs the header; shared short-row analysis
+    ├── pad_rows.rs       action: pad quickfix + source.fixAll
+    ├── align.rs          action + formatting: align columns
+    ├── compact.rs        action: strip alignment padding
+    ├── reinterpret.rs    action: parse under another dialect (via executeCommand)
+    ├── transform.rs      action: convert to another dialect (rewrites the text)
+    ├── quote.rs          action: quote cell / quote column
+    └── columns.rs        action: add/delete column; column spans for documentHighlight
+tests/
+├── e2e.rs                black-box protocol scenarios over Connection::memory()
+├── stdio.rs              smoke test of the real binary’s stdio framing
+├── properties.rs         proptest invariant suite over generated documents
+└── protocol.rs           proptest hostile-client sessions against the real server
+tree-sitter-rainbow-csv/  vendored rainbow grammar for Helix (has its own README)
+docs/                     these pages, plus gifs/ (tapes + samples for the recordings)</code></pre>
+
+<p>Two structural facts do a lot of work. Everything below <code>main.rs</code> lives in the
+<strong>library target</strong>, so unit tests, e2e tests and the property suites exercise the
+exact code the binary runs. And <strong>all internal offsets are byte offsets</strong> into the
+document text — conversion to LSP positions happens in exactly one place
+(<code>position.rs</code>), parametrized by the encoding negotiated with the client. If you find
+yourself converting positions anywhere else, stop.</p>
+
+<h2 id="extensibility"><a class="anchor" href="#extensibility">Adding a feature</a></h2>
+
+<p>The extensibility rule: <strong>feature N+1 = one new file in <code>src/features/</code> + one line in
+<code>Registry::standard()</code></strong>. A capability tweak in <code>capabilities.rs</code> is needed only when
+a feature introduces a new LSP <em>method</em> or action <em>kind</em> — rare; most features are
+code actions of an already-advertised kind.</p>
+
+<p>Worked sketch — <em>Unquote cell</em>, the first backlog item. Test-driven, like everything
+here:</p>
+
+<ol>
+  <li><strong>Red.</strong> Create <code>src/features/unquote.rs</code> with a failing test using the shared
+      helpers:
+<pre data-lang="rust"><code>#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::features::testutil::{ctx_at, doc};
+
+    #[test]
+    fn unquotes_a_quoted_cell_whose_value_survives_bare() {
+        let doc = doc("a,\"b\"\n");
+        let actions = UnquoteCells.actions(&amp;ctx_at(&amp;doc, doc.text.find('b').unwrap()));
+        assert_eq!(actions[0].title, "Unquote cell");
+        assert_eq!(crate::edits::apply(&amp;doc.text, &amp;actions[0].edits), "a,b\n");
+    }
+
+    #[test]
+    fn cells_that_need_their_quotes_offer_nothing() {
+        let doc = doc("a,\"b,c\"\n"); // the comma needs protection
+        assert_eq!(UnquoteCells.actions(&amp;ctx_at(&amp;doc, 3)), Vec::new());
+    }
+}</code></pre></li>
+  <li><strong>Green.</strong> Implement the provider. Applicability is recomputed from the parsed
+      table — never from client-echoed diagnostics — and the edit replaces the cell’s
+      <em>content span</em>, so alignment padding survives:
+<pre data-lang="rust"><code>pub struct UnquoteCells;
+
+impl ActionProvider for UnquoteCells {
+    fn name(&amp;self) -&gt; &amp;'static str {
+        "unquote-cells"
+    }
+
+    fn actions(&amp;self, ctx: &amp;ActionContext) -&gt; Vec&lt;Action&gt; {
+        let Some((row, column)) = ctx.cell_at_cursor() else {
+            return Vec::new();
+        };
+        // qualify: Quoted, on a clean row, and the decoded value contains
+        // no delimiter/quote/newline (encode_cell would re-quote it).
+        // edit: replace cell.content_span with the bare value.
+        // kind: REFACTOR_REWRITE — the inverse of quote.rs.
+        …
+    }
+}</code></pre></li>
+  <li><strong>Register.</strong> One line in <code>features/mod.rs</code>:
+      <code>providers: vec![…, Box::new(unquote::UnquoteCells)]</code> — plus the
+      <code>pub mod unquote;</code> declaration. Nothing else: the server’s code-action handler,
+      the kind filter, and the <a href="testing.html#invariant-map">action-contract property</a>
+      pick the provider up automatically through the registry.</li>
+  <li><strong>Prove it end-to-end.</strong> Add an e2e scenario (open → action → apply → didChange →
+      clean diagnostics) in <code>tests/e2e.rs</code>, and run
+      <code>PROPTEST_CASES=10000 cargo test</code> once — the contract property will apply your
+      edits to thousands of generated documents and re-parse the result.</li>
+  <li><strong>Gate and commit</strong> (<a href="#workflow">workflow below</a>): one commit for the cycle,
+      e.g. <code>feat(features): unquote cell where the value survives bare</code>.</li>
+</ol>
+
+<p>What providers may rely on: the <a href="parser.html#invariants">parser invariants</a>, the
+<a href="features.html#anatomy">three ground rules</a> (header contract, verbatim error rows,
+padding is layout), and <code>ActionContext</code>’s cursor helpers. What they must uphold:
+edits non-overlapping and in document order, no no-op actions (return nothing instead),
+and applicability recomputed from the table.</p>
+
+<h2 id="decisions"><a class="anchor" href="#decisions">Design decisions</a></h2>
+
+<p>The four load-bearing choices, in the order they were made (originally maintained as
+ADR files; consolidated here — commit messages referencing “ADR 000N” mean these).</p>
+
+<h3 id="adr-1">1 · Rust rather than Zig <span class="pill">2026-07-02</span></h3>
+<p>Both produce small, fast, single-binary language servers. The server’s value lies in
+CSV-specific features, not protocol plumbing, so ecosystem maturity decided:
+<code>lsp-server</code>/<code>lsp-types</code> are maintained under rust-lang and power rust-analyzer, while
+Zig’s LSP tooling tracks a pre-1.0 toolchain whose std breaks between releases — a
+recurring maintenance tax — and the JSON-RPC loop would be hand-rolled. Helix itself is
+Rust, so the contributor pool overlaps the target audience. Accepted costs: compile
+times, the borrow checker’s learning curve. Zig’s genuine strengths (compile speed,
+cross-compilation) were parity or not decisive for a long-lived tool.</p>
+
+<h3 id="adr-2">2 · <code>lsp-server</code> + <code>lsp-types</code>, synchronous — not an async framework, not hand-rolled <span class="pill">2026-07-02</span></h3>
+<p>Hand-rolling the transport is easy (~200 lines) but the LSP <em>type surface</em> is
+enormous and versioned — reimplementing it invites subtle bugs and buys nothing.
+Async frameworks (<code>tower-lsp</code>, unmaintained for years; its forks; <code>async-lsp</code>) add a
+tokio runtime and service abstractions to a server whose every request is answerable in
+microseconds: pure overhead. So: the synchronous scaffold rust-analyzer is built on —
+a plain channel of messages consumed in a <code>for</code> loop, one thread, no tokio in the
+tree. Long-running requests would block the loop — acceptable by design, nothing here
+is long-running. <code>lsp-types</code> is pinned at the minor version (0.97 switched
+<code>Url</code> → its own <code>Uri</code>), and URIs are treated as opaque keys throughout to stay
+insulated from that churn.</p>
+
+<h3 id="adr-3">3 · Hand-written error-tolerant parser, not the <code>csv</code> crate <span class="pill">2026-07-02</span></h3>
+<p>An IDE backend needs per-cell spans, error <em>reporting</em> with recovery, and a lossless
+layout model; the <code>csv</code> crate is a lenient data reader that silently repairs malformed
+input and discards layout — destroying exactly the information a language server must
+surface. The <a href="parser.html#why">parser page</a> has the full comparison. Consequences
+embraced: the parser is the project’s core asset with the deepest test coverage, and
+every RFC 4180 edge-case decision is owned and documented here.</p>
+
+<h3 id="adr-4">4 · Property-based testing with <code>proptest</code> <span class="pill">2026-07-03</span></h3>
+<p>The robustness story rests on documented invariants, and hand-picked examples only
+cover known failure modes. <code>proptest</code> is the closest Rust equivalent of Hypothesis:
+strategy combinators, integrated shrinking, failure persistence that yields a growing
+committed regression corpus. Chosen over <code>quickcheck</code> (type-directed shrinking, poor
+for fragment-built strings), <code>bolero</code> (indirection not yet justified) and
+<code>cargo-fuzz</code> (nightly, indefinite runtime — the documented escalation path, not a CI
+gate). Dev-dependency only; the shipped binary is unaffected. Details on the
+<a href="testing.html#property">testing page</a>.</p>
+
+<h2 id="principles"><a class="anchor" href="#principles">Design principles</a></h2>
+
+<ul>
+  <li><strong>Byte spans everywhere, one conversion boundary.</strong> Features never see LSP
+      positions; <code>position.rs</code> owns the encoding mess.</li>
+  <li><strong>The parser is total.</strong> Malformed input produces a <code>Table</code> plus errors — never a
+      failure. Everything downstream may assume a table exists.</li>
+  <li><strong>The verbatim principle.</strong> Rows the parser could not fully understand are excluded
+      from column checks and pass through every rewrite byte-for-byte.</li>
+  <li><strong>Padding is layout, not data.</strong> Values are trimmed content; align ⇄ compact
+      round-trips byte-identically; quoted interiors are untouchable.</li>
+  <li><strong>Recompute, never trust.</strong> Client-echoed diagnostics and <code>data</code> payloads are
+      response decoration; applicability always comes from the freshly parsed table.</li>
+  <li><strong>Edits are eager, minimal, and data.</strong> Complete <code>WorkspaceEdit</code>s (no resolve
+      round trip), shrunk to one small <code>TextEdit</code> so cursors stay put and formatting is
+      idempotent.</li>
+  <li><strong>Requests are always answered; notifications never are.</strong> Panics are contained
+      per-request by <code>catch_unwind</code>; malformed notifications are logged and dropped;
+      unknown documents are tolerated.</li>
+  <li><strong>stdout is sacred.</strong> Protocol frames only; logs to stderr behind
+      <code>CSV_LSP_LOG=1</code>.</li>
+  <li><strong>No configuration surface (yet).</strong> Sane behavior over knobs until real usage
+      demands otherwise (see <a href="#backlog">backlog</a>).</li>
+</ul>
+
+<h2 id="workflow"><a class="anchor" href="#workflow">Workflow</a></h2>
+
+<p>Test-driven, in small cycles, one commit per cycle:</p>
+
+<ol>
+  <li><strong>Red</strong> — write the smallest test that fails <em>for the right reason</em>. Run it, watch
+      it fail. If it passes immediately, the test is wrong or the step is already done.</li>
+  <li><strong>Green</strong> — the minimal implementation that passes. Resist generalizing beyond the
+      test.</li>
+  <li><strong>Refactor</strong> — with tests green, clean up naming and duplication. No behavior
+      change.</li>
+  <li><strong>Gate</strong> — all four must pass locally before every commit:
+<pre data-lang="sh"><code>cargo fmt --all
+cargo clippy --all-targets -- -D warnings
+cargo test
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps</code></pre></li>
+  <li><strong>Commit</strong> — test + implementation together (history stays bisectable; never commit
+      a red state).</li>
+</ol>
+
+<p>Commits follow <a href="https://www.conventionalcommits.org/">Conventional Commits</a>:
+<code>&lt;type&gt;(&lt;scope&gt;): &lt;imperative summary ≤ 72 chars&gt;</code>, body explaining the <em>why</em>
+when it isn’t obvious. Types used here: <code>feat</code>, <code>fix</code>, <code>test</code>, <code>refactor</code>,
+<code>docs</code>, <code>chore</code>, <code>ci</code>; the scope is the module (<code>parse</code>, <code>position</code>, <code>server</code>,
+<code>features</code>, …). Examples from the history:</p>
+
+<pre><code>feat(position): map byte offsets to utf-16 positions
+test(parse): cover unclosed-quote recovery
+fix(edits): keep minimized edit boundaries off CRLF middles
+docs: document property testing and refined invariants</code></pre>
+
+<p>CI (<code>.github/workflows/ci.yml</code>) runs the same four gates on stable Rust with
+<code>Swatinem/rust-cache</code>, on pushes to main and on PRs. CI is the enforcement mechanism;
+the local loop is the fast path.</p>
+
+<h2 id="style"><a class="anchor" href="#style">Code style and error handling</a></h2>
+
+<ul>
+  <li><code>rustfmt</code> with the default configuration — no <code>rustfmt.toml</code>; the community
+      default <em>is</em> the convention. <code>clippy</code> clean at <code>-D warnings</code>.</li>
+  <li>Lint <em>configuration</em> lives in <code>Cargo.toml</code>, not in source attributes:
+<pre data-lang="toml"><code>[lints.rust]
+unsafe_code = "forbid"    # this project has no reason to ever use unsafe
+missing_docs = "warn"     # every public item carries a doc comment; CI escalates via -D warnings</code></pre></li>
+  <li>Doc comments state <strong>invariants</strong> (“spans lie on char boundaries”), not
+      restatements of the signature; every module opens with a <code>//!</code> line naming its
+      single responsibility.</li>
+  <li><code>unwrap()</code>/<code>expect()</code> are acceptable in tests and in <code>main.rs</code> startup, nowhere
+      else. Library code returns the error or handles it locally; the dispatch layer maps
+      errors to LSP error responses, with <code>catch_unwind</code> as the last-resort belt.</li>
+</ul>
+
+<div class="concept">
+<span class="callout-label">Rust concept · a five-line logging framework</span>
+<p>The only logging infrastructure is one declarative macro in <code>lib.rs</code>:</p>
+<pre data-lang="rust"><code>#[macro_export]
+macro_rules! log {
+    ($($arg:tt)*) =&gt; {
+        if std::env::var_os("CSV_LSP_LOG").is_some() {
+            eprintln!("[csv-lsp] {}", format!($($arg)*));
+        }
+    };
+}</code></pre>
+<p><code>$($arg:tt)*</code> captures any token stream and forwards it to <code>format!</code>, so
+<code>log!("initialized with {encoding:?}")</code> works like <code>println!</code> — but to stderr, and
+only when the environment variable is set. <code>#[macro_export]</code> hoists it to the crate
+root. When a dependency would be one macro long, write the macro.</p>
+</div>
+
+<h2 id="dependencies"><a class="anchor" href="#dependencies">Dependency policy</a></h2>
+
+<p>Four runtime dependencies — <code>lsp-server</code>, <code>lsp-types</code> (minor-pinned),
+<code>serde_json</code>, <code>unicode-width</code> — plus <code>proptest</code> as a dev-dependency. Adding one
+requires a reason worth writing down in <a href="#decisions">Design decisions</a>.
+<code>Cargo.lock</code> is <strong>committed</strong>: this is a binary crate, and reproducible builds trump
+lockfile churn.</p>
+
+<h2 id="performance"><a class="anchor" href="#performance">Performance stance</a></h2>
+
+<p>Full reparse on every keystroke is O(n) and fine into the tens of megabytes; FULL
+document sync keeps the server trivial. The isolated escape hatches, if ever needed:
+incremental sync (contained in <code>Document</code>) and a size threshold for align. <strong>Do not
+optimize before that shows up in practice.</strong></p>
+
+<h2 id="backlog"><a class="anchor" href="#backlog">Backlog</a></h2>
+
+<p>All features from the original scope are implemented. Candidates for later, roughly
+in order of appetite:</p>
+
+<ul>
+  <li><strong>Unquote cell/column</strong> — the inverse of the quote actions, only where the value
+      survives unquoted (the <a href="#extensibility">worked example above</a>).</li>
+  <li><strong>Extra-cells quickfix</strong> — merging or dropping surplus cells; deleting data needs
+      more care than adding empty cells.</li>
+  <li><strong>Configuration</strong> via <code>initializationOptions</code> — severity overrides, blank-line
+      policy, header conventions.</li>
+  <li><strong>Incremental sync</strong> if very large files ever make FULL sync noticeable.</li>
+  <li><strong>Rename-file-on-convert</strong> via LSP <code>RenameFile</code> resource operations, where clients
+      support them.</li>
+</ul>
+
+<h2 id="docs"><a class="anchor" href="#docs">Maintaining these docs</a></h2>
+
+<ul>
+  <li>Each page in <code>docs/</code> is deliberately <strong>self-contained</strong> (inline CSS/JS, no build
+      step, no network). The style and script blocks are duplicated verbatim across
+      pages — when touching them, apply the change to every page.</li>
+  <li>Three artifacts must stay in sync when behavior changes: the <strong>prose invariant</strong>
+      (<a href="parser.html#invariants">parser page</a>), the <strong>property</strong> that checks it
+      (<a href="testing.html#invariant-map">invariant map</a>), and the <strong>code</strong>. A change to one
+      is a change to all three.</li>
+  <li>Feature GIFs are reproducible artifacts: tapes and samples live in
+      <code>docs/gifs/</code>, outputs are recorded on demand
+      (<a href="features.html#recording">recording guide</a>).</li>
+  <li>Code comments reference these pages by path (e.g.
+      <code>docs/parser.html</code>) — keep anchors stable when restructuring.</li>
+</ul>
+
+<nav class="prevnext">
+  <a href="testing.html"><span class="dir">Previous</span>← Testing</a>
+  <a href="index.html"><span class="dir">Next</span>Back to the overview →</a>
+</nav>
+
+</main>
+<footer>csv-lsp · MIT · <a href="https://github.com/tammoippen/csv-lsp">github.com/tammoippen/csv-lsp</a></footer>
+<script>
+/* Tiny syntax highlighter — progressive enhancement; the pages read fine as
+   plain text without it. One alternation regex per language; the first
+   defined capture group decides the color. Duplicated in every page. */
+(function () {
+  "use strict";
+  var esc = function (s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+  function paint(src, re, classes) {
+    var out = "", last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(src)) !== null) {
+      var cls = null;
+      for (var i = 1; i < m.length; i++) {
+        if (m[i] !== undefined) { cls = classes[i - 1]; break; }
+      }
+      out += esc(src.slice(last, m.index));
+      out += cls ? '<span class="hl-' + cls + '">' + esc(m[0]) + "</span>" : esc(m[0]);
+      last = m.index + m[0].length;
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    return out + esc(src.slice(last));
+  }
+  var RUST_KW = "as|break|const|continue|crate|dyn|else|enum|extern|false|fn|for|if|impl|in|let|loop|match|mod|move|mut|pub|ref|return|self|Self|static|struct|super|trait|true|type|unsafe|use|where|while|async|await";
+  var LANGS = {
+    rust: {
+      re: new RegExp(
+        "(\\/\\/[^\\n]*)|(\"(?:[^\"\\\\\\n]|\\\\.)*\")|(#!?\\[[^\\]\\n]*\\])|('[A-Za-z_][A-Za-z0-9_]*(?!'))|\\b([a-z_][A-Za-z0-9_]*!)|\\b(" + RUST_KW + ")\\b|\\b([A-Z][A-Za-z0-9_]*)\\b|\\b(\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[iu](?:8|16|32|64|size)|f32|f64)?)\\b",
+        "g"),
+      classes: ["c", "s", "a", "a", "f", "k", "t", "n"]
+    },
+    toml: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|(^\s*\[+[^\]\n]*\]+)|\b(true|false)\b|(^[A-Za-z0-9_.-]+(?=\s*=))/gm,
+      classes: ["c", "s", "t", "k", "f"]
+    },
+    sh: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'[^'\n]*')|(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?)/g,
+      classes: ["c", "s", "n"]
+    },
+    json: {
+      re: /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g,
+      classes: ["c", "s", "n", "k"]
+    },
+    tape: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|^\s*(Output|Require|Set|Type|Enter|Escape|Sleep|Hide|Show|Down|Up|Left|Right|Space|Backspace|Tab|Ctrl\+\S+)\b|\b(\d+(?:\.\d+)?(?:ms|s)?)\b/gm,
+      classes: ["c", "s", "k", "n"]
+    }
+  };
+  /* Rainbow columns for csv/tsv/ssv/psv snippets — the same trick the
+     tree-sitter grammar plays, including the mini dialect sniff. */
+  function paintCsv(src) {
+    var counts = { ",": 0, ";": 0, "|": 0, "\t": 0 };
+    var lines = src.split("\n");
+    var first = "";
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() !== "") { first = lines[i]; break; }
+    }
+    var inQ = false;
+    for (var j = 0; j < first.length; j++) {
+      var c = first[j];
+      if (c === '"') inQ = !inQ;
+      else if (!inQ && counts.hasOwnProperty(c)) counts[c]++;
+    }
+    var delim = ",", best = 0;
+    [",", "\t", ";", "|"].forEach(function (d) {
+      if (counts[d] > best) { best = counts[d]; delim = d; }
+    });
+    return lines.map(function (line) {
+      var out = "", col = 0, cell = "", q = false;
+      var flush = function () {
+        out += '<span class="hl-col' + (col % 7) + '">' + esc(cell) + "</span>";
+        cell = "";
+      };
+      for (var k = 0; k < line.length; k++) {
+        var ch = line[k];
+        /* Curly quotes guard doc annotations the same way real quotes guard cells. */
+        if (ch === '"' || ch === '\u201c' || ch === '\u201d') { q = !q; cell += ch; }
+        else if (!q && ch === delim) {
+          flush();
+          out += '<span class="hl-dim">' + esc(ch) + "</span>";
+          col++;
+        } else { cell += ch; }
+      }
+      flush();
+      return out;
+    }).join("\n");
+  }
+  try {
+    document.querySelectorAll("pre[data-lang]").forEach(function (pre) {
+      var lang = pre.getAttribute("data-lang");
+      var code = pre.querySelector("code") || pre;
+      var src = code.textContent;
+      if (lang === "csv" || lang === "tsv" || lang === "ssv" || lang === "psv") {
+        code.innerHTML = paintCsv(src);
+      } else if (LANGS[lang]) {
+        code.innerHTML = paint(src, LANGS[lang].re, LANGS[lang].classes);
+      }
+    });
+  } catch (err) { /* plain text is fine */ }
+})();
+</script>
+</body>
+</html>

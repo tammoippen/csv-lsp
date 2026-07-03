@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing · csv-lsp docs</title>
+<style>
+/* csv-lsp documentation — shared inline style.
+   Duplicated verbatim in every page so each file stays self-contained;
+   if you change it, change it in all pages (see contributing.html#docs). */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --inset: #eef1f4;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #0969da;
+  --accent-bg: #ddf4ff;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --err: #cf222e;
+  --hl-k: #cf222e; --hl-s: #0a3069; --hl-c: #6e7781; --hl-t: #953800;
+  --hl-f: #8250df; --hl-n: #0550ae; --hl-a: #116329; --hl-dim: #6e7781;
+  --col-0: #cf222e; --col-1: #bc4c00; --col-2: #7d4e00; --col-3: #116329;
+  --col-4: #0550ae; --col-5: #6639ba; --col-6: #99286e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --inset: #1c2129;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --border: #30363d;
+    --accent: #4493f8;
+    --accent-bg: #121d2f;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --hl-k: #ff7b72; --hl-s: #a5d6ff; --hl-c: #8b949e; --hl-t: #ffa657;
+    --hl-f: #d2a8ff; --hl-n: #79c0ff; --hl-a: #7ee787; --hl-dim: #8b949e;
+    --col-0: #ff7b72; --col-1: #f0883e; --col-2: #d29922; --col-3: #3fb950;
+    --col-4: #58a6ff; --col-5: #bc8cff; --col-6: #f778ba;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+}
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+header::after {
+  content: ""; display: block; height: 2px;
+  background: linear-gradient(90deg, var(--col-0), var(--col-1), var(--col-3), var(--col-4), var(--col-5));
+}
+.header-inner {
+  max-width: 60rem; margin: 0 auto; padding: 0.65rem 1.25rem;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.5rem;
+}
+.brand { font-weight: 700; font-size: 1.05rem; color: var(--fg); text-decoration: none; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 400; margin-left: 0.45rem; }
+header nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; font-size: 0.95rem; }
+header nav a { color: var(--muted); text-decoration: none; padding: 0.1rem 0; }
+header nav a:hover { color: var(--fg); }
+header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+footer {
+  max-width: 60rem; margin: 0 auto; padding: 1.25rem;
+  color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border);
+}
+footer a { color: inherit; }
+h1 { font-size: 1.9rem; line-height: 1.25; letter-spacing: -0.02em; margin: 0.8rem 0 0.3rem; }
+p.lead { font-size: 1.1rem; color: var(--muted); margin-top: 0.2rem; }
+h2 { font-size: 1.45rem; letter-spacing: -0.01em; margin: 2.6rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1.15rem; margin: 1.9rem 0 0.5rem; }
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; }
+h2 a.anchor, h3 a.anchor { color: inherit; text-decoration: none; }
+h2 a.anchor:hover::after, h3 a.anchor:hover::after { content: " #"; color: var(--muted); }
+a { color: var(--accent); }
+li { margin: 0.25rem 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+strong { font-weight: 650; }
+code { background: var(--inset); border-radius: 5px; padding: 0.12em 0.35em; font-size: 0.86em; }
+pre {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 0.9rem 0;
+}
+pre code { background: none; border-radius: 0; padding: 0; font-size: 0.86rem; display: block; }
+pre[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute; top: 0.35rem; right: 0.7rem;
+  font-size: 0.68rem; color: var(--muted); font-family: inherit;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+kbd {
+  display: inline-block; padding: 0.08em 0.45em; font-size: 0.82em;
+  background: var(--surface); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 5px;
+}
+.hl-k { color: var(--hl-k); } .hl-s { color: var(--hl-s); } .hl-c { color: var(--hl-c); font-style: italic; }
+.hl-t { color: var(--hl-t); } .hl-f { color: var(--hl-f); } .hl-n { color: var(--hl-n); }
+.hl-a { color: var(--hl-a); } .hl-dim { color: var(--hl-dim); }
+.hl-col0 { color: var(--col-0); } .hl-col1 { color: var(--col-1); } .hl-col2 { color: var(--col-2); }
+.hl-col3 { color: var(--col-3); } .hl-col4 { color: var(--col-4); } .hl-col5 { color: var(--col-5); }
+.hl-col6 { color: var(--col-6); }
+.tablewrap { overflow-x: auto; margin: 0.9rem 0; }
+table { border-collapse: collapse; font-size: 0.92rem; min-width: 60%; }
+th, td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; vertical-align: top; }
+th { background: var(--surface); }
+.note, .tip, .warn, .concept {
+  border: 1px solid var(--border); border-left-width: 4px;
+  border-radius: 6px; padding: 0.7rem 1rem; margin: 1rem 0;
+  background: var(--surface);
+}
+.note { border-left-color: var(--accent); }
+.tip { border-left-color: var(--ok); }
+.warn { border-left-color: var(--warn); }
+.concept { border-left-color: var(--hl-t); }
+.note > :first-child, .tip > :first-child, .warn > :first-child, .concept > :first-child { margin-top: 0.1rem; }
+.note > :last-child, .tip > :last-child, .warn > :last-child, .concept > :last-child { margin-bottom: 0.1rem; }
+.callout-label {
+  display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+}
+.concept .callout-label { color: var(--hl-t); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 0.9rem; margin: 1.2rem 0; }
+.card {
+  display: block; border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.9rem 1rem; background: var(--surface);
+  color: inherit; text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.card:hover { border-color: var(--accent); }
+.card h3 { margin: 0 0 0.3rem; font-size: 1.02rem; color: var(--accent); }
+.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.card .card-num { float: right; color: var(--muted); font-size: 0.8rem; }
+figure.diagram { margin: 1.2rem 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption, figure.gif figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; text-align: center; }
+.d-box { fill: var(--surface); stroke: var(--border); }
+.d-box2 { fill: var(--accent-bg); stroke: var(--accent); }
+.d-txt { fill: var(--fg); font: 13px system-ui, sans-serif; }
+.d-sub { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+.d-mono { fill: var(--fg); font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-mono-sm { fill: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-edge { stroke: var(--muted); fill: none; stroke-width: 1.3; }
+.d-edge-accent { stroke: var(--accent); fill: none; stroke-width: 1.5; }
+.d-arrow { fill: var(--muted); }
+.d-arrow-accent { fill: var(--accent); }
+figure.gif { margin: 1.2rem 0; }
+figure.gif img {
+  display: block; max-width: 100%; border: 1px solid var(--border); border-radius: 10px;
+}
+figure.gif.missing img { display: none; }
+figure.gif .placeholder { display: none; }
+figure.gif.missing .placeholder {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 1px dashed var(--border); border-radius: 10px;
+  padding: 2.2rem 1rem; color: var(--muted); font-size: 0.9rem;
+  background: var(--surface);
+}
+details { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin: 0.9rem 0; background: var(--surface); }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+.prevnext {
+  display: flex; justify-content: space-between; gap: 1rem;
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+.prevnext a { text-decoration: none; }
+.prevnext .dir { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pill {
+  display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.78rem; background: var(--inset); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.05rem 0.55rem;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a class="brand" href="index.html">csv-lsp<span>docs</span></a>
+    <nav>
+      <a href="quickstart.html">Quickstart</a>
+      <a href="features.html">Features</a>
+      <a href="lsp.html">LSP</a>
+      <a href="parser.html">Parser</a>
+      <a href="testing.html" aria-current="page">Testing</a>
+      <a href="contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<h1>Testing</h1>
+<p class="lead">How this project stays correct: a small pyramid of example-based tests,
+and a property-based layer that hunts for the inputs nobody thought to write down.</p>
+
+<h2 id="philosophy"><a class="anchor" href="#philosophy">Philosophy</a></h2>
+
+<p>The codebase was built test-driven in small red → green → refactor cycles, one commit
+per cycle — so the tests are not an afterthought, they are the executable form of every
+behavioral decision documented in these pages. Two consequences shape everything
+below:</p>
+
+<ul>
+  <li><strong>Tests assert behavior, not implementation.</strong> Names describe facts
+      (<code>padding_is_trimmed_from_content_spans</code>, not <code>test_parse_2</code>), and parser tests
+      compare <em>span slices</em> — <code>assert_eq!(span.slice(text), "…")</code> — so failures read
+      like text, not index arithmetic.</li>
+  <li><strong>Documented invariants get machine-checked counterparts.</strong> Every guarantee in the
+      <a href="parser.html#invariants">invariant catalog</a> maps to a property test
+      (<a href="#invariant-map">the map</a>).</li>
+</ul>
+
+<p>Four gates must pass before every commit — CI (<code>.github/workflows/ci.yml</code>) runs the
+identical four on stable Rust, so green locally means green remotely:</p>
+
+<pre data-lang="sh"><code>cargo fmt --all
+cargo clippy --all-targets -- -D warnings
+cargo test
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps</code></pre>
+
+<h2 id="pyramid"><a class="anchor" href="#pyramid">The test pyramid</a></h2>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>Layer</th><th>Where</th><th>What it pins down</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Unit tests</strong></td><td><code>#[cfg(test)] mod tests</code> next to the code</td><td>each module’s contract: parser state-machine arms, position conversions, dialect detection, per-feature action shapes</td></tr>
+    <tr><td><strong>Golden tests</strong></td><td>inline in <code>render.rs</code>/feature tests</td><td>full rendered output vs raw string literals — layout decisions (BOM, CRLF, verbatim rows) exactly; no snapshot framework, no extra dependency</td></tr>
+    <tr><td><strong>Corpus test</strong></td><td><code>parse.rs</code></td><td>totality: ~25 adversarial snippets × 4 dialects; the only assertion is “no panic, spans sound”</td></tr>
+    <tr><td><strong>Property suites</strong></td><td><code>tests/properties.rs</code>, <code>tests/protocol.rs</code></td><td>the documented invariants over <em>generated</em> documents and <em>generated</em> protocol traffic</td></tr>
+    <tr><td><strong>End-to-end tests</strong></td><td><code>tests/e2e.rs</code></td><td>black-box feature scenarios against the real server over an in-memory connection, played exactly like an editor</td></tr>
+    <tr><td><strong>Stdio smoke test</strong></td><td><code>tests/stdio.rs</code></td><td>spawns the released binary, speaks framed JSON-RPC over real pipes — catches stdout pollution and framing regressions forever</td></tr>
+  </tbody>
+</table></div>
+
+<p>The e2e layer deserves two notes, because its conventions keep CI honest:</p>
+
+<ul>
+  <li><strong>Every receive uses <code>recv_timeout</code></strong>, never a blocking <code>recv</code> — a hung server
+      fails the test in five seconds instead of hanging the CI job.</li>
+  <li>The <code>TestClient</code> helper plays the editor faithfully: it buffers notifications that
+      arrive while waiting for a response (a command republishes diagnostics <em>before</em>
+      answering), and it applies <code>TextEdit</code>s client-side — back-to-front, in the
+      negotiated encoding — exactly as an editor would, then syncs the result back with
+      <code>didChange</code>. Feature tests therefore exercise the entire loop:
+      diagnostics → action → edit → reparse → clean diagnostics.</li>
+</ul>
+
+<div class="concept">
+<span class="callout-label">Rust concept · test targets</span>
+<p>Files in <code>tests/</code> are <em>integration tests</em>: each is compiled as its own crate that can
+only see the library’s public API — which is exactly the point, and why everything
+below <code>main.rs</code> lives in <code>lib.rs</code>. The stdio test finds the real binary through
+<code>env!("CARGO_BIN_EXE_csv-lsp")</code> — cargo builds the binary target and injects its path
+at compile time. And in-module <code>#[cfg(test)]</code> unit tests compile away entirely in
+release builds.</p>
+</div>
+
+<h2 id="property"><a class="anchor" href="#property">Property-based testing</a></h2>
+
+<p>Hand-picked examples only cover the failure modes someone already imagined. The
+interesting bugs live in the inputs nobody wrote down — and an LSP server has two
+untrusted input surfaces: <strong>document text</strong> (anything a user opens) and <strong>protocol
+traffic</strong> (anything a client sends). Property-based testing covers both: describe how
+to <em>generate</em> inputs, state a property that must hold for <em>all</em> of them, and let the
+framework hunt.</p>
+
+<p>The tool is <a href="https://proptest-rs.github.io/proptest/">proptest</a> — the closest Rust
+relative of Python’s Hypothesis, chosen over the alternatives deliberately:</p>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>Tool</th><th>Model</th><th>Why (not) here</th></tr></thead>
+  <tbody>
+    <tr><td><code>proptest</code></td><td>Hypothesis-style: strategy combinators, integrated shrinking, failure-persistence files</td><td>✓ runs in <code>cargo test</code> on stable; strategies compose (weighted CSV-shaped fragments, not uniform noise)</td></tr>
+    <tr><td><code>quickcheck</code></td><td>type-directed <code>Arbitrary</code></td><td>shrinking is per-type, not per-strategy — poor for “string built from CSV fragments”</td></tr>
+    <tr><td><code>bolero</code></td><td>one property, many engines (RNG, libFuzzer, AFL, Kani)</td><td>attractive later; extra harness indirection not justified yet</td></tr>
+    <tr><td><code>cargo-fuzz</code> / <code>afl.rs</code></td><td>coverage-guided fuzzing</td><td>strongest input explorer, but nightly toolchain and indefinite runtime — a campaign tool, not a CI gate; the documented escalation path if the property suites stop finding bugs</td></tr>
+  </tbody>
+</table></div>
+
+<figure class="diagram">
+<svg viewBox="0 0 900 270" role="img" aria-label="The proptest loop: a strategy generates inputs, the property is asserted per case; on failure the input is shrunk to a minimal counterexample and persisted as a seed file that is replayed first on the next run">
+  <defs>
+    <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="d-arrow"/>
+    </marker>
+    <marker id="arrA4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="d-arrow-accent"/>
+    </marker>
+  </defs>
+  <rect x="20" y="40" width="180" height="60" rx="9" class="d-box"/>
+  <text x="110" y="64" text-anchor="middle" class="d-mono">Strategy</text>
+  <text x="110" y="82" text-anchor="middle" class="d-sub">weighted CSV fragments</text>
+
+  <rect x="270" y="40" width="160" height="60" rx="9" class="d-box"/>
+  <text x="350" y="64" text-anchor="middle" class="d-txt">generate case</text>
+  <text x="350" y="82" text-anchor="middle" class="d-sub">#1 … #N (256 default)</text>
+
+  <rect x="500" y="40" width="170" height="60" rx="9" class="d-box"/>
+  <text x="585" y="64" text-anchor="middle" class="d-txt">assert property</text>
+  <text x="585" y="82" text-anchor="middle" class="d-sub">prop_assert!(…)</text>
+
+  <rect x="740" y="40" width="140" height="60" rx="9" class="d-box"/>
+  <text x="810" y="64" text-anchor="middle" class="d-txt">all pass ✓</text>
+  <text x="810" y="82" text-anchor="middle" class="d-sub">suite stays in seconds</text>
+
+  <line x1="200" y1="70" x2="268" y2="70" class="d-edge" marker-end="url(#arr4)"/>
+  <line x1="430" y1="70" x2="498" y2="70" class="d-edge" marker-end="url(#arr4)"/>
+  <line x1="670" y1="70" x2="738" y2="70" class="d-edge" marker-end="url(#arr4)"/>
+  <path d="M 585 40 C 560 10, 380 10, 352 38" class="d-edge" marker-end="url(#arr4)"/>
+  <text x="468" y="16" text-anchor="middle" class="d-sub">next case</text>
+
+  <rect x="500" y="170" width="170" height="60" rx="9" class="d-box"/>
+  <text x="585" y="194" text-anchor="middle" class="d-txt">shrink</text>
+  <text x="585" y="212" text-anchor="middle" class="d-sub">smaller input, same failure</text>
+  <line x1="585" y1="100" x2="585" y2="168" class="d-edge" marker-end="url(#arr4)"/>
+  <text x="605" y="140" text-anchor="start" class="d-sub">a case fails ✗</text>
+
+  <rect x="270" y="170" width="160" height="60" rx="9" class="d-box"/>
+  <text x="350" y="194" text-anchor="middle" class="d-txt">minimal repro</text>
+  <text x="350" y="212" text-anchor="middle" class="d-sub">printed with the failure</text>
+  <line x1="498" y1="200" x2="432" y2="200" class="d-edge" marker-end="url(#arr4)"/>
+
+  <rect x="10" y="170" width="215" height="60" rx="9" class="d-box2"/>
+  <text x="117" y="194" text-anchor="middle" class="d-mono" style="font-size:11.5px">tests/*.proptest-regressions</text>
+  <text x="117" y="212" text-anchor="middle" class="d-sub">seed file — commit it</text>
+  <line x1="268" y1="200" x2="227" y2="200" class="d-edge" marker-end="url(#arr4)"/>
+  <path d="M 117 168 C 117 130, 300 120, 344 102" class="d-edge-accent" marker-end="url(#arrA4)"/>
+  <text x="180" y="126" text-anchor="middle" class="d-sub">replayed first on every future run</text>
+</svg>
+<figcaption>The proptest loop: shrinking turns “some 60-fragment document fails” into a
+two-character reproducer, and the seed file makes the failure a permanent regression test.</figcaption>
+</figure>
+
+<h2 id="strategies"><a class="anchor" href="#strategies">Strategies: generating CSV-shaped trouble</a></h2>
+
+<p>A <code>Strategy</code> is a composable recipe for generating (and shrinking) values. The
+document suite’s core insight is that <strong>uniform random strings are useless here</strong>: a
+random Unicode string almost never contains a quote, so it almost never reaches the
+parser’s deep states (escapes, recovery, multi-line cells). Instead, documents are
+assembled from a small vocabulary of the parser’s <em>interesting</em> bytes, weighted by
+repetition:</p>
+
+<pre data-lang="rust"><code>/// Weighted-by-repetition vocabulary: uniform random strings almost never
+/// contain a quote or a delimiter, so fragment assembly is what reaches the
+/// deep parser states (quoting, escapes, recovery).
+static FRAGMENTS: &amp;[&amp;str] = &amp;[
+    ",", ",", ",", ";", ";", "\t", "\t", "|", "|", // delimiters of all dialects
+    "\"", "\"", "\"", "\"\"", // quotes and escaped quotes
+    "\n", "\n", "\r\n", "\r", // all three terminators
+    " ", " ", "\u{feff}", // padding and the BOM (also mid-text)
+    "a", "a", "b", "x9", "é", "😀", "名", "\0", // content, multibyte included
+];
+
+fn csv_shaped() -&gt; impl Strategy&lt;Value = String&gt; {
+    prop::collection::vec(prop::sample::select(FRAGMENTS), 0..64)
+        .prop_map(|parts| parts.concat())
+}
+
+/// Mostly CSV-shaped, sometimes arbitrary Unicode noise.
+fn wild_text() -&gt; impl Strategy&lt;Value = String&gt; {
+    prop_oneof![
+        4 =&gt; csv_shaped(),
+        1 =&gt; any::&lt;String&gt;(),
+    ]
+}</code></pre>
+
+<p>Three combinators do all the work: <code>select</code> picks from a slice,
+<code>collection::vec</code> repeats a strategy, <code>prop_map</code> transforms values, and
+<code>prop_oneof!</code> mixes strategies with weights. The same style builds protocol traffic in
+<code>tests/protocol.rs</code>: coordinates are “mostly small, sometimes 2000, sometimes
+<code>u32::MAX</code>”, JSON params are recursively generated junk.</p>
+
+<p>One pattern deserves a name, because it avoids proptest’s biggest trap. Some
+properties need <em>clean</em> documents (dialect conversion is only offered on files without
+quoting errors). Filtering generated inputs (<code>prop_filter</code>) would reject most cases
+and blow the rejection budget. Instead the suite repairs <strong>constructively</strong>:</p>
+
+<pre data-lang="rust"><code>/// A document that parses without errors under the paired dialect. Every
+/// parse error requires a quote byte, so stripping the quotes repairs any
+/// broken input constructively — no rejection budget, any case count.
+fn clean_text_and_dialect() -&gt; impl Strategy&lt;Value = (String, Dialect)&gt; {
+    (wild_text(), dialect()).prop_map(|(text, from)| {
+        if parse(&amp;text, from).errors.is_empty() {
+            (text, from)
+        } else {
+            (text.replace('"', ""), from)
+        }
+    })
+}</code></pre>
+
+<div class="concept">
+<span class="callout-label">Rust concept · strategies are values</span>
+<p><code>impl Strategy&lt;Value = String&gt;</code> is an ordinary return type — strategies are plain
+values built by chaining combinators, so they can be named, reused and composed like
+iterators. Inside the <code>proptest! { … }</code> macro, <code>text in wild_text()</code> binds each
+generated value; <code>prop_assert!</code>/<code>prop_assert_eq!</code> report failures back to the runner
+(so it can shrink) instead of panicking outright — use them instead of
+<code>assert!</code> inside properties. Helper functions called <em>from</em> a property may still use
+plain <code>assert!</code>; a panic is also treated as a failure, it just skips the nicer
+reporting.</p>
+</div>
+
+<h2 id="shrinking"><a class="anchor" href="#shrinking">Shrinking, seeds, and the regression corpus</a></h2>
+
+<p>When a case fails, proptest <strong>shrinks</strong> it: it re-runs the property on
+systematically smaller variants (fewer fragments, simpler characters) until no smaller
+input still fails, then reports that minimal counterexample. A 60-fragment document
+with a bug usually shrinks to something like <code>"\r</code> — small enough to reason about
+directly.</p>
+
+<p>The failing seed is then written next to the suite —
+<code>tests/properties.proptest-regressions</code> / <code>tests/protocol.proptest-regressions</code> —
+and those files are <strong>committed</strong>: every future run replays past failures first, which
+is the Hypothesis example-database workflow, and CI inherits the whole bug history for
+free. (The suites configure <code>FileFailurePersistence::WithSource</code> explicitly, because
+proptest’s default location probes for <code>lib.rs</code>/<code>main.rs</code> and silently gives up
+inside integration-test targets.)</p>
+
+<p>Case counts are tuned so <code>cargo test</code> stays in seconds: the document suite runs the
+default 256 cases per property; the protocol suite runs 64 richer cases (each spawns a
+real server thread). Deepen locally whenever you touch the parser or renderer:</p>
+
+<pre data-lang="sh"><code>PROPTEST_CASES=10000 cargo test --test properties
+PROPTEST_CASES=1000  cargo test --test protocol</code></pre>
+
+<h2 id="invariant-map"><a class="anchor" href="#invariant-map">The invariant map</a></h2>
+
+<p>Every documented guarantee, and the property that checks it
+(<code>tests/properties.rs</code> unless noted):</p>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>Invariant</th><th>Property</th></tr></thead>
+  <tbody>
+    <tr><td><a href="parser.html#invariants">Parser: totality + the whole structural catalog</a> (spans nest, rows tile, cells tile, padding is spaces, blank ⇔ all-space, errors on their rows, decoding total); cursor lookup total and consistent</td><td><code>the_parser_is_total_and_structurally_sound</code> — via <code>assert_table_sound</code>, which is reused by every property that re-parses rendered output</td></tr>
+    <tr><td>Align idempotent · compact idempotent · compact undoes align</td><td><code>align_and_compact_round_trip</code></td></tr>
+    <tr><td>Rendering preserves decoded values, blankness and error shape</td><td><code>rendering_preserves_values_blankness_and_errors</code></td></tr>
+    <tr><td>Dialect conversion on clean tables introduces no quoting errors and preserves every value</td><td><code>dialect_conversion_is_lossless_on_clean_tables</code></td></tr>
+    <tr><td><code>minimize</code> yields at most one edit, empty iff texts equal, applying reproduces the target, and its boundaries are client-addressable (never inside a CRLF break)</td><td><code>minimize_yields_one_applicable_addressable_edit</code></td></tr>
+    <tr><td>Positions round-trip at every addressable offset, in all three encodings</td><td><code>positions_round_trip_at_every_addressable_offset</code></td></tr>
+    <tr><td>Hostile positions (any line/character, including <code>u32::MAX</code>) clamp to sound, addressable offsets</td><td><code>hostile_client_positions_clamp_cleanly</code></td></tr>
+    <tr><td>Dialect detection never panics on any string</td><td><code>dialect_detection_is_total</code></td></tr>
+    <tr><td>Every action honors the LSP edit contract: no no-op actions, edits non-overlapping and in document order, spans addressable, and applying yields a sound parse under the resulting dialect; diagnostics and highlight ranges obey the same span contract</td><td><code>feature_actions_honor_the_lsp_edit_contract</code></td></tr>
+    <tr><td>“Pad all short rows” actually clears every <span class="pill">row-missing-cells</span> diagnostic</td><td><code>pad_fix_all_repairs_every_short_row</code></td></tr>
+    <tr><td>Formatting an already-formatted document is a protocol-level no-op</td><td><code>formatting_is_idempotent_at_the_edit_level</code></td></tr>
+    <tr><td>The server survives arbitrary client sessions (below)</td><td><code>the_server_survives_hostile_clients</code> (<code>tests/protocol.rs</code>)</td></tr>
+  </tbody>
+</table></div>
+
+<p>Note the pattern in the big action property: it does not just check that actions
+<em>look</em> right — it applies their edits and re-parses the result, asserting the outcome
+is structurally sound <em>under the dialect the document ends up in</em> (conversions
+included). Properties compose: <code>assert_table_sound</code> written once for the parser gets
+reused as the postcondition of every feature.</p>
+
+<h2 id="protocol-suite"><a class="anchor" href="#protocol-suite">The hostile-client suite</a></h2>
+
+<p><code>tests/protocol.rs</code> generates entire LSP <em>sessions</em> against the real server over
+<code>Connection::memory()</code>: initialize with possibly-bogus encoding offers
+(<code>"wtf-8"</code>…), then a random sequence of operations —</p>
+
+<ul>
+  <li>opens, changes and closes in any order, including changes to never-opened documents
+      and a ranged change under FULL sync (a client bug the server shrugs off);</li>
+  <li>code-action requests with reversed and absurd ranges (<code>u32::MAX</code>) and random
+      kind filters; formatting and highlight requests anywhere;</li>
+  <li><code>executeCommand</code> with wrong names, wrong arity, junk arguments
+      (<code>["file:///w/a.csv", "klingon"]</code>);</li>
+  <li>raw requests and notifications with arbitrary JSON params, unknown methods
+      included.</li>
+</ul>
+
+<p>The property: <strong>every request is answered</strong> (a five-second timeout fails the test —
+no hangs), <strong>no response ever comes from the panic backstop</strong> (an error message
+containing “panicked” fails the run — <code>catch_unwind</code> is a belt, not a license),
+<strong>every pushed notification is well-formed diagnostics</strong> with ordered ranges, and the
+session ends in a <strong>clean shutdown</strong> with the server thread joining <code>Ok</code>.</p>
+
+<h2 id="running"><a class="anchor" href="#running">Running and extending</a></h2>
+
+<pre data-lang="sh"><code>cargo test                                  # everything: unit + golden + corpus + e2e + properties
+cargo test --test properties                # one suite
+cargo test padding_is_trimmed               # one test by substring
+PROPTEST_CASES=10000 cargo test --test properties   # deeper hunt (do this after parser/render changes)</code></pre>
+
+<p><strong>When a property fails</strong>, the workflow is:</p>
+
+<ol>
+  <li>Read the shrunk counterexample in the failure message — it is usually two or three
+      characters. Reproduce it in a scratch unit test if the property body is broad.</li>
+  <li>Fix the code (or, rarely, the property — if the property was wrong, the documented
+      invariant it mirrors needs the same correction; keep prose and property in sync).</li>
+  <li><strong>Commit the updated <code>tests/*.proptest-regressions</code> file</strong> together with the fix.
+      That seed is now replayed first on every machine, forever.</li>
+  <li>Consider whether the minimal case deserves promotion to a named example-based test
+      — regressions with a story are better documentation than seed hashes.</li>
+</ol>
+
+<p><strong>When adding a feature</strong>, you usually need no new property: the action contract
+property picks up new providers automatically through <code>Registry::standard()</code> — one
+more reason the registry is the single registration point. Add a dedicated property
+only for feature-specific semantics (as <code>pad_fix_all_repairs_every_short_row</code> does),
+and add e2e coverage for the editor-visible flow.</p>
+
+<nav class="prevnext">
+  <a href="parser.html"><span class="dir">Previous</span>← The CSV parser</a>
+  <a href="contributing.html"><span class="dir">Next</span>Contributing →</a>
+</nav>
+
+</main>
+<footer>csv-lsp · MIT · <a href="https://github.com/tammoippen/csv-lsp">github.com/tammoippen/csv-lsp</a></footer>
+<script>
+/* Tiny syntax highlighter — progressive enhancement; the pages read fine as
+   plain text without it. One alternation regex per language; the first
+   defined capture group decides the color. Duplicated in every page. */
+(function () {
+  "use strict";
+  var esc = function (s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+  function paint(src, re, classes) {
+    var out = "", last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(src)) !== null) {
+      var cls = null;
+      for (var i = 1; i < m.length; i++) {
+        if (m[i] !== undefined) { cls = classes[i - 1]; break; }
+      }
+      out += esc(src.slice(last, m.index));
+      out += cls ? '<span class="hl-' + cls + '">' + esc(m[0]) + "</span>" : esc(m[0]);
+      last = m.index + m[0].length;
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    return out + esc(src.slice(last));
+  }
+  var RUST_KW = "as|break|const|continue|crate|dyn|else|enum|extern|false|fn|for|if|impl|in|let|loop|match|mod|move|mut|pub|ref|return|self|Self|static|struct|super|trait|true|type|unsafe|use|where|while|async|await";
+  var LANGS = {
+    rust: {
+      re: new RegExp(
+        "(\\/\\/[^\\n]*)|(\"(?:[^\"\\\\\\n]|\\\\.)*\")|(#!?\\[[^\\]\\n]*\\])|('[A-Za-z_][A-Za-z0-9_]*(?!'))|\\b([a-z_][A-Za-z0-9_]*!)|\\b(" + RUST_KW + ")\\b|\\b([A-Z][A-Za-z0-9_]*)\\b|\\b(\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[iu](?:8|16|32|64|size)|f32|f64)?)\\b",
+        "g"),
+      classes: ["c", "s", "a", "a", "f", "k", "t", "n"]
+    },
+    toml: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|(^\s*\[+[^\]\n]*\]+)|\b(true|false)\b|(^[A-Za-z0-9_.-]+(?=\s*=))/gm,
+      classes: ["c", "s", "t", "k", "f"]
+    },
+    sh: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'[^'\n]*')|(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?)/g,
+      classes: ["c", "s", "n"]
+    },
+    json: {
+      re: /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g,
+      classes: ["c", "s", "n", "k"]
+    },
+    tape: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|^\s*(Output|Require|Set|Type|Enter|Escape|Sleep|Hide|Show|Down|Up|Left|Right|Space|Backspace|Tab|Ctrl\+\S+)\b|\b(\d+(?:\.\d+)?(?:ms|s)?)\b/gm,
+      classes: ["c", "s", "k", "n"]
+    }
+  };
+  /* Rainbow columns for csv/tsv/ssv/psv snippets — the same trick the
+     tree-sitter grammar plays, including the mini dialect sniff. */
+  function paintCsv(src) {
+    var counts = { ",": 0, ";": 0, "|": 0, "\t": 0 };
+    var lines = src.split("\n");
+    var first = "";
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() !== "") { first = lines[i]; break; }
+    }
+    var inQ = false;
+    for (var j = 0; j < first.length; j++) {
+      var c = first[j];
+      if (c === '"') inQ = !inQ;
+      else if (!inQ && counts.hasOwnProperty(c)) counts[c]++;
+    }
+    var delim = ",", best = 0;
+    [",", "\t", ";", "|"].forEach(function (d) {
+      if (counts[d] > best) { best = counts[d]; delim = d; }
+    });
+    return lines.map(function (line) {
+      var out = "", col = 0, cell = "", q = false;
+      var flush = function () {
+        out += '<span class="hl-col' + (col % 7) + '">' + esc(cell) + "</span>";
+        cell = "";
+      };
+      for (var k = 0; k < line.length; k++) {
+        var ch = line[k];
+        /* Curly quotes guard doc annotations the same way real quotes guard cells. */
+        if (ch === '"' || ch === '\u201c' || ch === '\u201d') { q = !q; cell += ch; }
+        else if (!q && ch === delim) {
+          flush();
+          out += '<span class="hl-dim">' + esc(ch) + "</span>";
+          col++;
+        } else { cell += ch; }
+      }
+      flush();
+      return out;
+    }).join("\n");
+  }
+  try {
+    document.querySelectorAll("pre[data-lang]").forEach(function (pre) {
+      var lang = pre.getAttribute("data-lang");
+      var code = pre.querySelector("code") || pre;
+      var src = code.textContent;
+      if (lang === "csv" || lang === "tsv" || lang === "ssv" || lang === "psv") {
+        code.innerHTML = paintCsv(src);
+      } else if (LANGS[lang]) {
+        code.innerHTML = paint(src, LANGS[lang].re, LANGS[lang].classes);
+      }
+    });
+  } catch (err) { /* plain text is fine */ }
+})();
+</script>
+</body>
+</html>

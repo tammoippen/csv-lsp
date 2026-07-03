@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LSP setup · csv-lsp docs</title>
+<style>
+/* csv-lsp documentation — shared inline style.
+   Duplicated verbatim in every page so each file stays self-contained;
+   if you change it, change it in all pages (see contributing.html#docs). */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --inset: #eef1f4;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #0969da;
+  --accent-bg: #ddf4ff;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --err: #cf222e;
+  --hl-k: #cf222e; --hl-s: #0a3069; --hl-c: #6e7781; --hl-t: #953800;
+  --hl-f: #8250df; --hl-n: #0550ae; --hl-a: #116329; --hl-dim: #6e7781;
+  --col-0: #cf222e; --col-1: #bc4c00; --col-2: #7d4e00; --col-3: #116329;
+  --col-4: #0550ae; --col-5: #6639ba; --col-6: #99286e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --inset: #1c2129;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --border: #30363d;
+    --accent: #4493f8;
+    --accent-bg: #121d2f;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --hl-k: #ff7b72; --hl-s: #a5d6ff; --hl-c: #8b949e; --hl-t: #ffa657;
+    --hl-f: #d2a8ff; --hl-n: #79c0ff; --hl-a: #7ee787; --hl-dim: #8b949e;
+    --col-0: #ff7b72; --col-1: #f0883e; --col-2: #d29922; --col-3: #3fb950;
+    --col-4: #58a6ff; --col-5: #bc8cff; --col-6: #f778ba;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+}
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+header::after {
+  content: ""; display: block; height: 2px;
+  background: linear-gradient(90deg, var(--col-0), var(--col-1), var(--col-3), var(--col-4), var(--col-5));
+}
+.header-inner {
+  max-width: 60rem; margin: 0 auto; padding: 0.65rem 1.25rem;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.5rem;
+}
+.brand { font-weight: 700; font-size: 1.05rem; color: var(--fg); text-decoration: none; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 400; margin-left: 0.45rem; }
+header nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; font-size: 0.95rem; }
+header nav a { color: var(--muted); text-decoration: none; padding: 0.1rem 0; }
+header nav a:hover { color: var(--fg); }
+header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+main { max-width: 60rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+footer {
+  max-width: 60rem; margin: 0 auto; padding: 1.25rem;
+  color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border);
+}
+footer a { color: inherit; }
+h1 { font-size: 1.9rem; line-height: 1.25; letter-spacing: -0.02em; margin: 0.8rem 0 0.3rem; }
+p.lead { font-size: 1.1rem; color: var(--muted); margin-top: 0.2rem; }
+h2 { font-size: 1.45rem; letter-spacing: -0.01em; margin: 2.6rem 0 0.8rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1.15rem; margin: 1.9rem 0 0.5rem; }
+h4 { font-size: 1rem; margin: 1.4rem 0 0.4rem; }
+h2 a.anchor, h3 a.anchor { color: inherit; text-decoration: none; }
+h2 a.anchor:hover::after, h3 a.anchor:hover::after { content: " #"; color: var(--muted); }
+a { color: var(--accent); }
+li { margin: 0.25rem 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+strong { font-weight: 650; }
+code { background: var(--inset); border-radius: 5px; padding: 0.12em 0.35em; font-size: 0.86em; }
+pre {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 0.9rem 0;
+}
+pre code { background: none; border-radius: 0; padding: 0; font-size: 0.86rem; display: block; }
+pre[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute; top: 0.35rem; right: 0.7rem;
+  font-size: 0.68rem; color: var(--muted); font-family: inherit;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+kbd {
+  display: inline-block; padding: 0.08em 0.45em; font-size: 0.82em;
+  background: var(--surface); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 5px;
+}
+.hl-k { color: var(--hl-k); } .hl-s { color: var(--hl-s); } .hl-c { color: var(--hl-c); font-style: italic; }
+.hl-t { color: var(--hl-t); } .hl-f { color: var(--hl-f); } .hl-n { color: var(--hl-n); }
+.hl-a { color: var(--hl-a); } .hl-dim { color: var(--hl-dim); }
+.hl-col0 { color: var(--col-0); } .hl-col1 { color: var(--col-1); } .hl-col2 { color: var(--col-2); }
+.hl-col3 { color: var(--col-3); } .hl-col4 { color: var(--col-4); } .hl-col5 { color: var(--col-5); }
+.hl-col6 { color: var(--col-6); }
+.tablewrap { overflow-x: auto; margin: 0.9rem 0; }
+table { border-collapse: collapse; font-size: 0.92rem; min-width: 60%; }
+th, td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; vertical-align: top; }
+th { background: var(--surface); }
+.note, .tip, .warn, .concept {
+  border: 1px solid var(--border); border-left-width: 4px;
+  border-radius: 6px; padding: 0.7rem 1rem; margin: 1rem 0;
+  background: var(--surface);
+}
+.note { border-left-color: var(--accent); }
+.tip { border-left-color: var(--ok); }
+.warn { border-left-color: var(--warn); }
+.concept { border-left-color: var(--hl-t); }
+.note > :first-child, .tip > :first-child, .warn > :first-child, .concept > :first-child { margin-top: 0.1rem; }
+.note > :last-child, .tip > :last-child, .warn > :last-child, .concept > :last-child { margin-bottom: 0.1rem; }
+.callout-label {
+  display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+}
+.concept .callout-label { color: var(--hl-t); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 0.9rem; margin: 1.2rem 0; }
+.card {
+  display: block; border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.9rem 1rem; background: var(--surface);
+  color: inherit; text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.card:hover { border-color: var(--accent); }
+.card h3 { margin: 0 0 0.3rem; font-size: 1.02rem; color: var(--accent); }
+.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.card .card-num { float: right; color: var(--muted); font-size: 0.8rem; }
+figure.diagram { margin: 1.2rem 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption, figure.gif figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; text-align: center; }
+.d-box { fill: var(--surface); stroke: var(--border); }
+.d-box2 { fill: var(--accent-bg); stroke: var(--accent); }
+.d-txt { fill: var(--fg); font: 13px system-ui, sans-serif; }
+.d-sub { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+.d-mono { fill: var(--fg); font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-mono-sm { fill: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.d-edge { stroke: var(--muted); fill: none; stroke-width: 1.3; }
+.d-edge-accent { stroke: var(--accent); fill: none; stroke-width: 1.5; }
+.d-arrow { fill: var(--muted); }
+.d-arrow-accent { fill: var(--accent); }
+figure.gif { margin: 1.2rem 0; }
+figure.gif img {
+  display: block; max-width: 100%; border: 1px solid var(--border); border-radius: 10px;
+}
+figure.gif.missing img { display: none; }
+figure.gif .placeholder { display: none; }
+figure.gif.missing .placeholder {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 1px dashed var(--border); border-radius: 10px;
+  padding: 2.2rem 1rem; color: var(--muted); font-size: 0.9rem;
+  background: var(--surface);
+}
+details { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin: 0.9rem 0; background: var(--surface); }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+.prevnext {
+  display: flex; justify-content: space-between; gap: 1rem;
+  margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+.prevnext a { text-decoration: none; }
+.prevnext .dir { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pill {
+  display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.78rem; background: var(--inset); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.05rem 0.55rem;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <a class="brand" href="index.html">csv-lsp<span>docs</span></a>
+    <nav>
+      <a href="quickstart.html">Quickstart</a>
+      <a href="features.html">Features</a>
+      <a href="lsp.html" aria-current="page">LSP</a>
+      <a href="parser.html">Parser</a>
+      <a href="testing.html">Testing</a>
+      <a href="contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<h1>LSP setup in this project</h1>
+<p class="lead">How the Language Server Protocol works, how csv-lsp is wired into it,
+and where every message goes — from the stdio pipe to the parsed table and back.</p>
+
+<h2 id="protocol"><a class="anchor" href="#protocol">The protocol in ten minutes</a></h2>
+
+<p>An LSP server is a process that speaks <strong>JSON-RPC 2.0 over stdio</strong>. Every message is
+a JSON object prefixed with a length header:</p>
+
+<pre><code>Content-Length: 85\r\n
+\r\n
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{...}}</code></pre>
+
+<p>Two message flavors, and the distinction drives the whole server design:</p>
+
+<ul>
+  <li><strong>Request</strong> — has an <code>id</code>; the receiver <em>must</em> answer with a response
+      (<code>result</code> or <code>error</code>) carrying the same <code>id</code>.</li>
+  <li><strong>Notification</strong> — no <code>id</code>; never answered, not even with an error.</li>
+</ul>
+
+<p>A session (client = editor, server = csv-lsp) has a fixed lifecycle:</p>
+
+<ol>
+  <li>Client sends <code>initialize</code> (request) with its <strong>capabilities</strong>; the server answers
+      with its own — the contract of what may be called later.</li>
+  <li>Client sends <code>initialized</code> (notification). The session is live.</li>
+  <li>Document sync flows as notifications: <code>textDocument/didOpen</code> (full text +
+      <code>languageId</code> + version), <code>didChange</code>, <code>didClose</code>. Feature traffic flows as
+      requests: <code>codeAction</code>, <code>formatting</code>, <code>documentHighlight</code>, <code>executeCommand</code>.</li>
+  <li>The server pushes <code>textDocument/publishDiagnostics</code> notifications whenever it
+      likes — csv-lsp: after every open and every change. Each publish <em>replaces</em> the
+      previous set for that file.</li>
+  <li>Client sends <code>shutdown</code> (request), then <code>exit</code> (notification); the process ends.</li>
+</ol>
+
+<h2 id="crates"><a class="anchor" href="#crates">The crates, and why the server is synchronous</a></h2>
+
+<p>csv-lsp is built on <code>lsp-server</code> + <code>lsp-types</code> — the scaffold rust-analyzer uses —
+rather than an async framework or hand-rolled plumbing. The reasoning
+(<a href="contributing.html#decisions">decision record</a>, condensed):</p>
+
+<ul>
+  <li>Transport is trivial (~200 lines if hand-rolled), but the <strong>LSP type surface is
+      enormous</strong> — hundreds of carefully versioned structs. <code>lsp-types</code> provides all of
+      them spec-correct and serde-ready.</li>
+  <li>CSV parsing is O(n) and takes microseconds to milliseconds; <strong>every request can be
+      answered synchronously</strong>. A tokio runtime plus service layers would be pure
+      overhead. rust-analyzer proves the synchronous architecture at scales far beyond
+      this project’s.</li>
+  <li><code>lsp-server</code> contributes exactly the boring parts: <code>Connection</code> with <code>stdio()</code> and
+      <code>memory()</code> constructors (the latter powers the <a href="testing.html#pyramid">e2e tests</a>),
+      <code>Content-Length</code> framing, <code>initialize_start()/initialize_finish()</code> handshake
+      helpers, and <code>handle_shutdown()</code>.</li>
+</ul>
+
+<p>The whole server is <strong>one thread plus lsp-server’s two I/O threads</strong>; <code>main.rs</code> is a
+20-line shim that connects stdio, runs the loop, and joins the I/O threads on the way
+out. The main loop consumes a plain channel:</p>
+
+<pre data-lang="rust"><code>for message in &amp;connection.receiver {
+    match message {
+        Message::Request(request) =&gt; {
+            if connection.handle_shutdown(&amp;request)? {
+                return Ok(());
+            }
+            let response = handle_request(&amp;mut state, &amp;connection, request);
+            connection.sender.send(Message::Response(response))?;
+        }
+        Message::Notification(notification) =&gt; {
+            handle_notification(&amp;mut state, &amp;connection, notification)?;
+        }
+        // We never send server→client requests, so no responses arrive.
+        Message::Response(_) =&gt; {}
+    }
+}</code></pre>
+
+<div class="concept">
+<span class="callout-label">Rust concept · traits as protocol tables</span>
+<p><code>lsp-types</code> models every protocol method as a type implementing
+<code>lsp_types::request::Request</code> (or <code>…::notification::Notification</code>) with two
+<em>associated items</em>: the method name constant and the params type. Dispatch never
+touches string literals or untyped JSON twice:</p>
+<pre data-lang="rust"><code>fn cast_request&lt;R: lsp_types::request::Request&gt;(
+    request: Request,
+) -&gt; Result&lt;(RequestId, R::Params), RequestError&gt; {
+    request.extract(R::METHOD).map_err(|err| RequestError {
+        code: ErrorCode::InvalidParams,
+        message: format!("invalid `{}` params: {err}", R::METHOD),
+    })
+}
+// call site — the turbofish picks the method:
+let (id, params) = cast_request::&lt;CodeActionRequest&gt;(request)?;</code></pre>
+<p>One generic function replaces a family of hand-written deserializers, and the compiler
+guarantees the method string and the params type can never disagree.</p>
+</div>
+
+<h2 id="dataflow"><a class="anchor" href="#dataflow">Dataflow</a></h2>
+
+<figure class="diagram">
+<svg viewBox="0 0 900 545" role="img" aria-label="Component diagram: editor connects over stdio to the csv-lsp process; the main loop routes notifications to the document store and requests through the dispatcher; both meet the feature registry; the position module converts spans at the boundary; diagnostics are pushed back to the editor">
+  <defs>
+    <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="d-arrow"/>
+    </marker>
+    <marker id="arrA2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" class="d-arrow-accent"/>
+    </marker>
+  </defs>
+
+  <rect x="280" y="10" width="340" height="56" rx="9" class="d-box"/>
+  <text x="450" y="34" text-anchor="middle" class="d-txt">Helix / any LSP client</text>
+  <text x="450" y="52" text-anchor="middle" class="d-sub">applies edits · renders diagnostics · shows menus</text>
+
+  <rect x="280" y="100" width="340" height="32" rx="7" class="d-box" style="stroke-dasharray:5 4"/>
+  <text x="450" y="121" text-anchor="middle" class="d-sub">stdio · Content-Length framed JSON-RPC</text>
+
+  <line x1="415" y1="66" x2="415" y2="99" class="d-edge" marker-end="url(#arr2)"/>
+  <line x1="485" y1="100" x2="485" y2="67" class="d-edge" marker-end="url(#arr2)"/>
+
+  <rect x="20" y="160" width="860" height="360" rx="12" style="fill:none" class="d-box"/>
+  <text x="40" y="184" class="d-sub">csv-lsp process — one thread (+ lsp-server’s I/O threads)</text>
+
+  <rect x="340" y="200" width="220" height="60" rx="9" class="d-box"/>
+  <text x="450" y="224" text-anchor="middle" class="d-mono">server.rs main loop</text>
+  <text x="450" y="242" text-anchor="middle" class="d-sub">handle_shutdown → dispatch</text>
+  <line x1="450" y1="132" x2="450" y2="199" class="d-edge" marker-end="url(#arr2)"/>
+
+  <rect x="60" y="310" width="235" height="60" rx="9" class="d-box"/>
+  <text x="177" y="334" text-anchor="middle" class="d-mono">handle_notification</text>
+  <text x="177" y="352" text-anchor="middle" class="d-sub">didOpen · didChange · didClose</text>
+  <path d="M 360 260 L 177 260 L 177 309" class="d-edge" marker-end="url(#arr2)"/>
+  <text x="255" y="278" text-anchor="middle" class="d-sub">notifications</text>
+
+  <rect x="595" y="310" width="265" height="60" rx="9" class="d-box"/>
+  <text x="727" y="334" text-anchor="middle" class="d-mono">dispatch_request</text>
+  <text x="727" y="352" text-anchor="middle" class="d-sub">codeAction · formatting · highlight · command</text>
+  <path d="M 540 260 L 727 260 L 727 309" class="d-edge" marker-end="url(#arr2)"/>
+  <text x="655" y="278" text-anchor="middle" class="d-sub">requests → responses</text>
+
+  <rect x="60" y="430" width="235" height="60" rx="9" class="d-box"/>
+  <text x="177" y="454" text-anchor="middle" class="d-mono">document::Store</text>
+  <text x="177" y="472" text-anchor="middle" class="d-sub">text · dialect · parse(text) → Table</text>
+  <line x1="177" y1="370" x2="177" y2="429" class="d-edge" marker-end="url(#arr2)"/>
+
+  <rect x="340" y="430" width="220" height="60" rx="9" class="d-box2"/>
+  <text x="450" y="454" text-anchor="middle" class="d-mono">features::Registry</text>
+  <text x="450" y="472" text-anchor="middle" class="d-sub">rules → Diag · providers → Action</text>
+  <line x1="295" y1="460" x2="339" y2="460" class="d-edge" marker-end="url(#arr2)"/>
+  <path d="M 595 355 L 450 355 L 450 429" class="d-edge" marker-end="url(#arr2)"/>
+
+  <rect x="605" y="430" width="235" height="60" rx="9" class="d-box"/>
+  <text x="722" y="454" text-anchor="middle" class="d-mono">position::LineIndex</text>
+  <text x="722" y="472" text-anchor="middle" class="d-sub">byte Span ↔ (line, character)</text>
+  <line x1="727" y1="370" x2="727" y2="429" class="d-edge" marker-end="url(#arr2)"/>
+  <line x1="560" y1="475" x2="604" y2="475" class="d-edge" marker-end="url(#arr2)"/>
+
+  <path d="M 340 445 L 315 445 L 315 250 L 279 250" style="opacity:0" />
+  <path d="M 177 490 L 177 505 L 40 505 L 40 40 L 279 40" class="d-edge-accent" marker-end="url(#arrA2)"/>
+  <text x="112" y="524" text-anchor="start" class="d-sub">textDocument/publishDiagnostics — pushed after every open/change</text>
+</svg>
+<figcaption>Every box is one module; the accent path is the push channel back to the editor.</figcaption>
+</figure>
+
+<p>The design invariant that keeps this picture simple: <strong>everything inside the process
+works in byte offsets</strong> into the document text. LSP positions exist only at the
+boundary — <code>position.rs</code> converts incoming positions to offsets before features run,
+and outgoing spans to positions after they are done. No other module is allowed to do
+this conversion.</p>
+
+<h3 id="lifecycle">Walkthrough: a keystroke</h3>
+
+<ol>
+  <li>The editor sends <code>didChange</code>. csv-lsp advertises <strong>FULL sync</strong>, so the notification
+      carries the complete new text — no delta bookkeeping, no chance of drifting out of
+      sync. (Reparsing is O(n) and fine into the tens of MB; incremental sync is the
+      documented escape hatch if that ever changes.)</li>
+  <li><code>Store::change</code> replaces the text and eagerly rebuilds the derived state: the
+      <code>LineIndex</code> and the parsed <code>Table</code>. The dialect is <em>not</em> re-detected — it was
+      fixed at open so a half-typed document cannot flip dialect under your cursor.</li>
+  <li><code>publish_diagnostics</code> runs every registered rule over the table, converts each
+      internal <code>Diag</code> (byte span, severity, code) into an LSP diagnostic at the boundary,
+      and pushes one <code>publishDiagnostics</code> notification tagged with the document version.</li>
+</ol>
+
+<h3>Walkthrough: a code action</h3>
+
+<ol>
+  <li>The editor asks: <code>textDocument/codeAction</code> with a range (a bare cursor is a
+      zero-width range) and a <code>context</code> — its current diagnostics for the range, plus an
+      optional <code>only</code> kind filter.</li>
+  <li>The server converts both positions to byte offsets — normalizing reversed ranges
+      from hostile clients (<code>start.min(end)…</code>) — and builds an <code>ActionContext</code>.</li>
+  <li>Every provider inspects the freshly parsed table and returns internal <code>Action</code>s.
+      The client’s echoed diagnostics are used for <em>linkage only</em> (connecting an action to
+      its squiggle in the UI) — never as input: providers recompute applicability from the
+      table, so a client that drops or reorders diagnostic payloads changes nothing.</li>
+  <li>Each text action ships a complete <code>WorkspaceEdit</code> in the <code>changes</code>-map form. The
+      <strong>client</strong> applies the edit locally and follows up with an ordinary
+      <code>didChange</code> — there is no second server round trip, which is why the server
+      advertises <code>resolveProvider: false</code> and computes edits eagerly (they are cheap for
+      CSV).</li>
+</ol>
+
+<h3>Walkthrough: the two dialect features</h3>
+
+<p><em>Reinterpret as …</em> must change <strong>server state</strong>, not text — so it is the one action
+carrying an LSP <code>Command</code> instead of an edit. Picking it makes the client send
+<code>workspace/executeCommand</code> with <code>csv-lsp.setDialect [uri, "ssv"]</code>; the handler parses
+the arguments defensively (they arrive as loose JSON values — shape mismatches answer
+<code>InvalidParams</code>, never panic), re-parses the document under the new dialect, and
+republishes diagnostics. The response itself is <code>null</code>: effects travel as
+notifications.</p>
+
+<p><em>Convert to …</em> is a text edit with a twist — after the client applies it, the server
+must parse the <em>new</em> text under the <em>new</em> dialect, but it cannot know whether you
+picked the action or dismissed the menu. The trick lives in one field of the server
+state:</p>
+
+<pre data-lang="rust"><code>/// Dialect conversions offered in the last `codeAction` response, per URI:
+/// `(converted full text, target dialect)`. When a `didChange` carries
+/// exactly one of these texts, the user applied that conversion and the
+/// document flips dialect. Cleared on every change/close, so dismissed
+/// actions cost nothing.
+pending_transforms: HashMap&lt;String, Vec&lt;(String, Dialect)&gt;&gt;,</code></pre>
+
+<p>On every <code>didChange</code> the server takes the entry for that URI and compares the incoming
+text against each recorded conversion; an exact match adopts that dialect for the
+reparse. A manual edit that happens to produce the exact conversion <em>is</em> the
+conversion — and any other edit clears the record.</p>
+
+<h2 id="positions"><a class="anchor" href="#positions">Positions and encodings — the genuinely tricky bit</a></h2>
+
+<p>LSP positions are <code>(line, character)</code>, where <code>character</code> counts <strong>code units of the
+negotiated encoding</strong> — not bytes, not codepoints. The historical default is UTF-16
+(VS Code’s internal string encoding). In the line <code>😀x</code>, the column of <code>x</code> is:</p>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>encoding</th><th>column of <code>x</code></th><th>because</th></tr></thead>
+  <tbody>
+    <tr><td>utf-8 (bytes)</td><td>4</td><td>😀 is 4 UTF-8 bytes</td></tr>
+    <tr><td>utf-16</td><td>2</td><td>😀 is a surrogate pair (2 units)</td></tr>
+    <tr><td>utf-32 (codepoints)</td><td>1</td><td>😀 is 1 codepoint</td></tr>
+  </tbody>
+</table></div>
+
+<p>Since LSP 3.17 the client may offer <code>general.positionEncodings</code> in <code>initialize</code>;
+the server picks one and echoes it in its capabilities. csv-lsp prefers <code>utf-8</code>
+(internal offsets are already bytes — conversion becomes trivial; Helix offers it),
+then <code>utf-32</code>, and falls back to the mandatory <code>utf-16</code>:</p>
+
+<pre data-lang="rust"><code>if offered.contains(&amp;PositionEncodingKind::UTF8) {
+    PositionEncoding::Utf8
+} else if offered.contains(&amp;PositionEncodingKind::UTF32) {
+    PositionEncoding::Utf32
+} else {
+    PositionEncoding::Utf16
+}</code></pre>
+
+<p>All three are implemented in <code>position.rs</code> — the <em>only</em> module allowed to convert.
+<code>LineIndex</code> records the byte offset of every line start (splitting on <code>\n</code>,
+<code>\r\n</code> <em>and lone <code>\r</code></em>, exactly as the LSP spec defines line breaks) and converts in
+both directions, with the spec’s clamping rules for hostile input:</p>
+
+<ul>
+  <li>a line past the end of the document maps to the document end;</li>
+  <li>a character past the end of its line clamps to the line’s <em>content</em> end (before the
+      terminator);</li>
+  <li>a character landing inside a multi-unit character — between UTF-16 surrogate halves,
+      say — snaps back to that character’s start, so the returned offset is always a valid
+      <code>char</code> boundary.</li>
+</ul>
+
+<div class="note">
+<span class="callout-label">The CRLF corner case</span>
+<p>One <code>char</code> boundary exists that <em>no LSP position can express</em>: the point between
+<code>\r</code> and <code>\n</code> of a CRLF break (characters clamp to the content end, which lies before
+the <code>\r</code>). Any edit with a boundary there would be misapplied by a conforming client.
+<code>edits::minimize</code> therefore widens its diffs off CRLF middles, and the property suite
+checks every span the server emits for <em>client-addressability</em> — the round trip
+offset → position → offset must be the identity. See
+<a href="testing.html#invariant-map">the invariant map</a>.</p>
+</div>
+
+<div class="concept">
+<span class="callout-label">Rust concept · partition_point</span>
+<p>Offset → line is a binary search over the sorted line starts:
+<code>self.line_starts.partition_point(|&amp;start| start &lt;= offset) - 1</code>.
+<code>partition_point</code> returns the index of the first element for which the predicate turns
+false — the standard library’s idiomatic “find my bucket” tool (also used by
+<code>Table::row_at</code>/<code>cell_at</code> to resolve the cursor). The <code>- 1</code> is safe because index 0
+is always present: line 0 starts at byte 0.</p>
+</div>
+
+<h2 id="capabilities"><a class="anchor" href="#capabilities">What the server advertises, and why</a></h2>
+
+<p>A server must never advertise what it cannot answer — clients are entitled to call
+anything claimed here (<code>capabilities.rs</code>):</p>
+
+<div class="tablewrap"><table>
+  <thead><tr><th>Capability</th><th>Value</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td><code>positionEncoding</code></td><td>negotiated</td><td>utf-8 preferred; see above</td></tr>
+    <tr><td><code>textDocumentSync</code></td><td>FULL + open/close</td><td>whole text on every change; reparse is O(n) and cheap, delta bookkeeping is not</td></tr>
+    <tr><td><code>codeActionProvider</code></td><td>kinds <code>quickfix</code>, <code>source</code>, <code>source.fixAll</code>, <code>refactor</code>, <code>refactor.rewrite</code>; <code>resolveProvider: false</code></td><td>edits are computed eagerly — no lazy resolve round trip</td></tr>
+    <tr><td><code>documentFormattingProvider</code></td><td>true</td><td><code>:format</code> = align columns; idempotent by construction</td></tr>
+    <tr><td><code>documentHighlightProvider</code></td><td>true</td><td>the cursor’s column as per-cell ranges — Helix’s <kbd>Space</kbd><kbd>h</kbd> turns them into a column multi-selection</td></tr>
+    <tr><td><code>executeCommandProvider</code></td><td><code>csv-lsp.setDialect</code></td><td>the one action that changes server state instead of text</td></tr>
+  </tbody>
+</table></div>
+
+<p>Kind strings are hierarchical: a client filtering with <code>only: ["source"]</code> must also
+receive <code>source.fixAll</code> actions. The registry implements the spec’s dotted-prefix
+matching once, centrally — <code>source</code> matches <code>source.fixAll</code>, but <code>quickfix</code> does not
+match a hypothetical <code>quickfixes</code>.</p>
+
+<h2 id="hardening"><a class="anchor" href="#hardening">Hardening: errors, panics, hostile clients</a></h2>
+
+<p>The failure-handling rules follow the two message flavors:</p>
+
+<ul>
+  <li><strong>Requests must always be answered.</strong> Malformed params become an
+      <code>InvalidParams</code> error response; unknown methods become <code>MethodNotFound</code>; and every
+      handler runs inside <code>catch_unwind</code>, so a bug in one feature answers <em>that one
+      request</em> with <code>InternalError</code> instead of killing the server.</li>
+  <li><strong>Notifications are never answered</strong> — malformed ones are logged and dropped.
+      Unknown documents in a <code>didChange</code> are tolerated (a client protocol error the
+      server shrugs off), as is a ranged change under FULL sync.</li>
+  <li><strong>Unknown state is not an error.</strong> A request about a never-opened URI returns an
+      empty result; <code>documentHighlight</code> off any cell returns <code>None</code> — clients call these
+      speculatively.</li>
+</ul>
+
+<p>This is not defensive guesswork: the <a href="testing.html#protocol-suite">hostile-client
+property suite</a> generates thousands of adversarial sessions — reversed ranges,
+positions past EOF or inside surrogate pairs, junk command arguments, unknown methods —
+and asserts the server answers everything and shuts down cleanly.</p>
+
+<div class="concept">
+<span class="callout-label">Rust concept · catch_unwind as a boundary, not a habit</span>
+<p>Rust panics unwind the stack like exceptions but are <em>not</em> control flow — the idiom is
+to return <code>Result</code> everywhere and reserve <code>std::panic::catch_unwind</code> for process
+boundaries where “this thread must survive arbitrary bugs” is a requirement (the same
+pattern web servers use per-request). The state is wrapped in
+<code>AssertUnwindSafe</code>: the compiler cannot prove a <code>&amp;mut ServerState</code> stays consistent
+across an unwind, so it makes you say it out loud. That promise is honest here because
+handlers mutate state only in ways that stay coherent if abandoned (worst case: a stale
+pending-transform offer, cleared on the next change).</p>
+</div>
+
+<h2 id="logging"><a class="anchor" href="#logging">Logging discipline</a></h2>
+
+<p><strong>stdout belongs to the protocol — one stray byte corrupts the frame stream.</strong> All
+human-facing output goes to stderr via the <code>log!</code> macro, disabled unless
+<code>CSV_LSP_LOG=1</code> is set. Helix surfaces the server’s stderr in its own log when started
+with <code>hx -v</code>. The stdio smoke test (<code>tests/stdio.rs</code>) exists precisely to catch stdout
+pollution forever: it spawns the real binary and fails if a single non-protocol byte
+appears on the pipe.</p>
+
+<nav class="prevnext">
+  <a href="features.html"><span class="dir">Previous</span>← Features</a>
+  <a href="parser.html"><span class="dir">Next</span>The CSV parser →</a>
+</nav>
+
+</main>
+<footer>csv-lsp · MIT · <a href="https://github.com/tammoippen/csv-lsp">github.com/tammoippen/csv-lsp</a></footer>
+<script>
+/* Tiny syntax highlighter — progressive enhancement; the pages read fine as
+   plain text without it. One alternation regex per language; the first
+   defined capture group decides the color. Duplicated in every page. */
+(function () {
+  "use strict";
+  var esc = function (s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+  function paint(src, re, classes) {
+    var out = "", last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(src)) !== null) {
+      var cls = null;
+      for (var i = 1; i < m.length; i++) {
+        if (m[i] !== undefined) { cls = classes[i - 1]; break; }
+      }
+      out += esc(src.slice(last, m.index));
+      out += cls ? '<span class="hl-' + cls + '">' + esc(m[0]) + "</span>" : esc(m[0]);
+      last = m.index + m[0].length;
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    return out + esc(src.slice(last));
+  }
+  var RUST_KW = "as|break|const|continue|crate|dyn|else|enum|extern|false|fn|for|if|impl|in|let|loop|match|mod|move|mut|pub|ref|return|self|Self|static|struct|super|trait|true|type|unsafe|use|where|while|async|await";
+  var LANGS = {
+    rust: {
+      re: new RegExp(
+        "(\\/\\/[^\\n]*)|(\"(?:[^\"\\\\\\n]|\\\\.)*\")|(#!?\\[[^\\]\\n]*\\])|('[A-Za-z_][A-Za-z0-9_]*(?!'))|\\b([a-z_][A-Za-z0-9_]*!)|\\b(" + RUST_KW + ")\\b|\\b([A-Z][A-Za-z0-9_]*)\\b|\\b(\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[iu](?:8|16|32|64|size)|f32|f64)?)\\b",
+        "g"),
+      classes: ["c", "s", "a", "a", "f", "k", "t", "n"]
+    },
+    toml: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|(^\s*\[+[^\]\n]*\]+)|\b(true|false)\b|(^[A-Za-z0-9_.-]+(?=\s*=))/gm,
+      classes: ["c", "s", "t", "k", "f"]
+    },
+    sh: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'[^'\n]*')|(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?)/g,
+      classes: ["c", "s", "n"]
+    },
+    json: {
+      re: /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g,
+      classes: ["c", "s", "n", "k"]
+    },
+    tape: {
+      re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|^\s*(Output|Require|Set|Type|Enter|Escape|Sleep|Hide|Show|Down|Up|Left|Right|Space|Backspace|Tab|Ctrl\+\S+)\b|\b(\d+(?:\.\d+)?(?:ms|s)?)\b/gm,
+      classes: ["c", "s", "k", "n"]
+    }
+  };
+  /* Rainbow columns for csv/tsv/ssv/psv snippets — the same trick the
+     tree-sitter grammar plays, including the mini dialect sniff. */
+  function paintCsv(src) {
+    var counts = { ",": 0, ";": 0, "|": 0, "\t": 0 };
+    var lines = src.split("\n");
+    var first = "";
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() !== "") { first = lines[i]; break; }
+    }
+    var inQ = false;
+    for (var j = 0; j < first.length; j++) {
+      var c = first[j];
+      if (c === '"') inQ = !inQ;
+      else if (!inQ && counts.hasOwnProperty(c)) counts[c]++;
+    }
+    var delim = ",", best = 0;
+    [",", "\t", ";", "|"].forEach(function (d) {
+      if (counts[d] > best) { best = counts[d]; delim = d; }
+    });
+    return lines.map(function (line) {
+      var out = "", col = 0, cell = "", q = false;
+      var flush = function () {
+        out += '<span class="hl-col' + (col % 7) + '">' + esc(cell) + "</span>";
+        cell = "";
+      };
+      for (var k = 0; k < line.length; k++) {
+        var ch = line[k];
+        /* Curly quotes guard doc annotations the same way real quotes guard cells. */
+        if (ch === '"' || ch === '\u201c' || ch === '\u201d') { q = !q; cell += ch; }
+        else if (!q && ch === delim) {
+          flush();
+          out += '<span class="hl-dim">' + esc(ch) + "</span>";
+          col++;
+        } else { cell += ch; }
+      }
+      flush();
+      return out;
+    }).join("\n");
+  }
+  try {
+    document.querySelectorAll("pre[data-lang]").forEach(function (pre) {
+      var lang = pre.getAttribute("data-lang");
+      var code = pre.querySelector("code") || pre;
+      var src = code.textContent;
+      if (lang === "csv" || lang === "tsv" || lang === "ssv" || lang === "psv") {
+        code.innerHTML = paintCsv(src);
+      } else if (LANGS[lang]) {
+        code.innerHTML = paint(src, LANGS[lang].re, LANGS[lang].classes);
+      }
+    });
+  } catch (err) { /* plain text is fine */ }
+})();
+</script>
+</body>
+</html>
