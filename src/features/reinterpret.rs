@@ -13,7 +13,7 @@ use lsp_types::CodeActionKind;
 use crate::dialect::Dialect;
 use crate::features::{Action, ActionContext, ActionProvider, ServerCommand};
 
-/// `Reinterpret as …` for the two non-current dialects.
+/// `Reinterpret as …` for every non-current dialect.
 pub struct ReinterpretDialect;
 
 impl ActionProvider for ReinterpretDialect {
@@ -22,7 +22,7 @@ impl ActionProvider for ReinterpretDialect {
     }
 
     fn actions(&self, ctx: &ActionContext) -> Vec<Action> {
-        [Dialect::Csv, Dialect::Tsv, Dialect::Ssv]
+        Dialect::ALL
             .into_iter()
             .filter(|&dialect| dialect != ctx.doc.dialect)
             .map(|dialect| Action {
@@ -44,12 +44,19 @@ mod tests {
     use crate::features::testutil::{ctx_at, doc};
 
     #[test]
-    fn offers_the_two_non_current_dialects() {
+    fn offers_every_non_current_dialect() {
         let doc = doc("a,b\n"); // languageId csv
         let actions = ReinterpretDialect.actions(&ctx_at(&doc, 0));
 
         let titles: Vec<_> = actions.iter().map(|action| action.title.as_str()).collect();
-        assert_eq!(titles, ["Reinterpret as TSV", "Reinterpret as SSV"]);
+        assert_eq!(
+            titles,
+            [
+                "Reinterpret as TSV",
+                "Reinterpret as SSV",
+                "Reinterpret as PSV"
+            ]
+        );
         for action in &actions {
             assert_eq!(action.kind, CodeActionKind::SOURCE);
             assert!(action.edits.is_empty());
@@ -72,6 +79,13 @@ mod tests {
         );
         let actions = ReinterpretDialect.actions(&ctx_at(&doc, 0));
         let titles: Vec<_> = actions.iter().map(|action| action.title.as_str()).collect();
-        assert_eq!(titles, ["Reinterpret as CSV", "Reinterpret as TSV"]);
+        assert_eq!(
+            titles,
+            [
+                "Reinterpret as CSV",
+                "Reinterpret as TSV",
+                "Reinterpret as PSV"
+            ]
+        );
     }
 }
