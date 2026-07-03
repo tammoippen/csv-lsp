@@ -3,7 +3,7 @@
 //! Everything inside the server works in **byte offsets** into the document
 //! text. This module is the single place where those offsets are converted to
 //! and from LSP `(line, character)` positions, honoring the position encoding
-//! negotiated with the client (see `docs/plan/m0-scaffold.md`).
+//! negotiated with the client (see `docs/lsp.html#positions`).
 
 use crate::parse::Span;
 

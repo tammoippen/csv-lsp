@@ -1,7 +1,8 @@
 //! The synchronous LSP server: handshake, main loop and request dispatch.
 //!
 //! One thread, one loop (rust-analyzer's `lsp-server` architecture, see
-//! ADR 0002): requests are answered in order, notifications update state.
+//! `docs/lsp.html#crates`): requests are answered in order, notifications
+//! update state.
 //! Handlers are panic-isolated so a bug in one feature answers one request
 //! with an error instead of killing the server.
 

@@ -1,5 +1,6 @@
-//! Hostile-client protocol properties (ADR 0004): generated LSP traffic
-//! against the real server over an in-memory connection pair.
+//! Hostile-client protocol properties (`docs/testing.html#protocol-suite`):
+//! generated LSP traffic against the real server over an in-memory
+//! connection pair.
 //!
 //! Every session initializes with generated (possibly bogus) position
 //! encodings, replays a generated op sequence — opens, changes and closes

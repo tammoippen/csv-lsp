@@ -1,5 +1,5 @@
 //! Convert the document to a different dialect: rewrite the delimiters and
-//! adapt quoting (see `docs/plan/m4-dialect-actions.md`).
+//! adapt quoting (see `docs/features.html#convert`).
 //!
 //! Conversion emits the compact form (padding is layout for the *old*
 //! column widths). Files with parse errors offer no conversions — their

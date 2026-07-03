@@ -69,7 +69,8 @@ pub fn server_capabilities(enc: PositionEncoding) -> ServerCapabilities {
         })),
         document_formatting_provider: Some(OneOf::Left(true)),
         // Helix turns highlight responses into multi-selections (Space+h) —
-        // this is how "select the column" works (docs/plan/m7).
+        // this is how "select the column" works
+        // (docs/features.html#select-column).
         document_highlight_provider: Some(OneOf::Left(true)),
         execute_command_provider: Some(ExecuteCommandOptions {
             commands: vec![SET_DIALECT_COMMAND.to_owned()],
