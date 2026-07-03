@@ -118,9 +118,11 @@ lone `\r`, matching the LSP spec) and converts `Span ↔ lsp::Range`.
 - Handshake via `initialize_start()/initialize_finish()` so client capabilities are
   known before ours are built.
 - Advertised capabilities: `positionEncoding` (negotiated), `textDocumentSync = FULL`
-  (+ open/close), `codeActionProvider` with kinds `[quickfix, source, source.fixAll]`
-  (no lazy resolve — edits are cheap and computed eagerly),
-  `documentFormattingProvider`, and one `executeCommand`: `csv-lsp.setDialect`.
+  (+ open/close), `codeActionProvider` with kinds `[quickfix, source, source.fixAll,
+  refactor, refactor.rewrite]` (no lazy resolve — edits are cheap and computed
+  eagerly), `documentFormattingProvider`, `documentHighlightProvider` (the
+  cursor's column as per-cell ranges — Helix's `Space+h` turns them into a
+  column multi-selection), and one `executeCommand`: `csv-lsp.setDialect`.
 - Text actions carry a complete `WorkspaceEdit` (`changes` map form — no
   client→server round trip). `executeCommand` exists solely for actions that
   change **server state** instead of text: `Reinterpret as …` flips a

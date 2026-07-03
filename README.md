@@ -40,6 +40,10 @@ with fixes attached.
 - **Add / delete columns** — insert an empty column left or right of the one
   under the cursor, or delete it across the whole file (header included, so
   clean files stay clean; one undo restores everything).
+- **Select a column** (Helix) — the server answers
+  `textDocument/documentHighlight` with every cell of the cursor's column, and
+  Helix's `Space+h` turns that into one selection per cell: change, append or
+  pipe the whole column with ordinary multi-cursor editing.
 - Unicode-aware alignment (CJK and accented characters measure by display
   width), BOM/CRLF/final-newline preservation, multi-line quoted cells.
 
@@ -89,7 +93,9 @@ identical makes your entry merge with it. Verify with `hx --health csv`.
 
 Daily driving: diagnostics appear as you type; `space`+`a` opens the code
 actions (pad row, pad all, align, compact, reinterpret, convert, quote
-cell/column, add/delete column); `:format` aligns.
+cell/column, add/delete column); `:format` aligns; `space`+`h` selects the
+column under the cursor (one selection per cell — empty cells become bare
+cursors, ready for typing).
 
 ## Dialects and conventions
 
