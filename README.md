@@ -84,18 +84,50 @@ name = "ssv"
 scope = "text.ssv"
 file-types = ["ssv"]
 language-servers = ["csv-lsp"]
+grammar = "csv"                # rainbow columns — reuse the built-in csv grammar
 auto-format = false
 ```
 
-These entries fully define the languages — no tree-sitter grammar needed. If
-your Helix version ships a built-in `csv` language, keeping `name = "csv"`
-identical makes your entry merge with it. Verify with `hx --health csv`.
+Diagnostics, code actions and `:format` need nothing beyond these entries —
+csv-lsp works without any grammar. Keeping `name = "csv"` identical to the
+built-in language makes the entry merge with it. Verify with
+`hx --health csv`.
 
 Daily driving: diagnostics appear as you type; `space`+`a` opens the code
 actions (pad row, pad all, align, compact, reinterpret, convert, quote
 cell/column, add/delete column); `:format` aligns; `space`+`h` selects the
 column under the cursor (one selection per cell — empty cells become bare
 cursors, ready for typing).
+
+### Rainbow columns (syntax colors)
+
+Helix highlights exclusively through tree-sitter — it has no LSP
+semantic-token support, so csv-lsp (or any language server) cannot color
+columns. The rainbow on `.csv` files comes from the `csv` grammar and
+queries Helix ships since 25.07; the entry above merges with that built-in
+language by name and keeps them.
+
+- **ssv** — the built-in grammar splits on `;` and `|` too, which is what
+  `grammar = "csv"` above taps into. Helix resolves query files by
+  *language* name, so a new language needs its own queries — one line,
+  inheriting the bundled ones:
+
+  ```sh
+  mkdir -p ~/.config/helix/runtime/queries/ssv
+  echo '; inherits: csv' > ~/.config/helix/runtime/queries/ssv/highlights.scm
+  ```
+
+- **tsv** — no rainbow: the grammar does not treat tab as a delimiter.
+  Everything csv-lsp provides works regardless.
+- **Empty cells shift colors** — the grammar cannot represent empty cells
+  (and errors past the 7th column), so a row like `a,b,,,` fails to parse
+  and tree-sitter's error recovery bleeds the column cycle into
+  neighboring rows. That is an upstream bug in
+  [weartist/rainbow-csv-tree-sitter] (the grammar Helix pins), out of
+  reach of csv-lsp and of custom query files alike — it needs a grammar
+  fix.
+
+[weartist/rainbow-csv-tree-sitter]: https://github.com/weartist/rainbow-csv-tree-sitter
 
 ## Dialects and conventions
 
