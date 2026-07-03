@@ -58,7 +58,9 @@ impl RenderOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QuotePolicy {
     /// Emit each cell's content bytes verbatim — maximally lossless; align
-    /// and compact are pure whitespace transforms under this policy.
+    /// and compact are pure whitespace transforms under this policy (with
+    /// one exception under every policy: a first cell whose content starts
+    /// with U+FEFF is quoted so it cannot be re-read as a file BOM).
     Preserve,
     /// Re-encode each *decoded* value, quoting only where the target
     /// dialect requires it (normalizes quoting).
@@ -96,7 +98,7 @@ pub fn render(text: &str, table: &Table, opts: &RenderOptions) -> String {
             if column > 0 {
                 out.push(delimiter);
             }
-            let content: Cow<'_, str> = match opts.quote_policy {
+            let mut content: Cow<'_, str> = match opts.quote_policy {
                 QuotePolicy::Preserve => Cow::Borrowed(cell.content_span.slice(text)),
                 QuotePolicy::Required => {
                     Cow::Owned(encode_cell(&cell.value(text), opts.dialect, false))
@@ -112,6 +114,12 @@ pub fn render(text: &str, table: &Table, opts: &RenderOptions) -> String {
                     }
                 }
             };
+            // A first cell whose content would put U+FEFF at byte 0 of the
+            // output gets re-read as a file-level BOM by any parser — the
+            // value would silently lose the character. Quotes keep it data.
+            if out.is_empty() && content.starts_with('\u{feff}') {
+                content = Cow::Owned(encode_cell(&cell.value(text), opts.dialect, true));
+            }
             out.push_str(&content);
             // Pad only when another cell follows: last cells stay unpadded,
             // so no row ever gains trailing whitespace.
@@ -160,7 +168,14 @@ pub fn column_widths(text: &str, table: &Table) -> Vec<usize> {
             continue;
         }
         for (column, cell) in row.cells.iter().enumerate() {
-            let width = cell.content_span.slice(text).width();
+            let content = cell.content_span.slice(text);
+            let mut width = content.width();
+            // Mirror the renderer: a first cell whose content starts with
+            // U+FEFF gains quotes (it would otherwise be re-read as a file
+            // BOM), so it measures two display cells wider.
+            if index == 0 && column == 0 && !table.has_bom && content.starts_with('\u{feff}') {
+                width += 2;
+            }
             if column == widths.len() {
                 widths.push(width);
             } else {
@@ -237,6 +252,23 @@ mod tests {
     fn compact_preserves_a_missing_final_newline() {
         assert_eq!(compact("a , b"), "a,b");
         assert_eq!(compact(""), "");
+    }
+
+    #[test]
+    fn a_cell_value_starting_with_a_bom_is_quoted_to_stay_data() {
+        // The ZWNBSP is *content* here (the file does not start with it).
+        // Stripping the padding would put it at byte 0, where every parser
+        // reads it as a file-level BOM — quoting keeps it in the value.
+        assert_eq!(compact(" \u{feff}x,y\n"), "\"\u{feff}x\",y\n");
+        // With a real file BOM ahead of it, the content BOM is safe.
+        assert_eq!(compact("\u{feff} \u{feff}x,y\n"), "\u{feff}\u{feff}x,y\n");
+    }
+
+    #[test]
+    fn align_widths_account_for_the_bom_quoting() {
+        // The first cell gains quotes when aligned, so the column must be
+        // measured at its quoted width or align would not be idempotent.
+        assert_eq!(align(" \u{feff}a,x\nbb,y\n"), "\"\u{feff}a\",x\nbb ,y\n");
     }
 
     #[test]
