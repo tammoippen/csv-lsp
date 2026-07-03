@@ -1,6 +1,6 @@
 //! Dialect (delimiter) handling and detection.
 //!
-//! The three supported dialects differ only in their delimiter byte; quoting
+//! The supported dialects differ only in their delimiter byte; quoting
 //! rules are identical. Detection order (first hit wins) lives in
 //! `Document`: LSP `languageId` → file extension → content sniffing → CSV.
 
@@ -14,15 +14,22 @@ pub enum Dialect {
     /// Semicolon-separated (`;`) — common in European locale exports where
     /// `,` is the decimal separator.
     Ssv,
+    /// Pipe-separated (`|`) — common in database dumps and log exports.
+    Psv,
 }
 
 impl Dialect {
+    /// Every dialect, in detection-priority order (ties in [`Self::sniff`]
+    /// and action listings follow this order).
+    pub const ALL: [Dialect; 4] = [Dialect::Csv, Dialect::Tsv, Dialect::Ssv, Dialect::Psv];
+
     /// Human-readable dialect name for action titles and messages.
     pub fn name(self) -> &'static str {
         match self {
             Dialect::Csv => "CSV",
             Dialect::Tsv => "TSV",
             Dialect::Ssv => "SSV",
+            Dialect::Psv => "PSV",
         }
     }
 
@@ -32,6 +39,7 @@ impl Dialect {
             Dialect::Csv => b',',
             Dialect::Tsv => b'\t',
             Dialect::Ssv => b';',
+            Dialect::Psv => b'|',
         }
     }
 
@@ -41,6 +49,7 @@ impl Dialect {
             "csv" => Some(Dialect::Csv),
             "tsv" => Some(Dialect::Tsv),
             "ssv" => Some(Dialect::Ssv),
+            "psv" => Some(Dialect::Psv),
             _ => None,
         }
     }
@@ -53,6 +62,7 @@ impl Dialect {
             "csv" => Some(Dialect::Csv),
             "tsv" | "tab" => Some(Dialect::Tsv),
             "ssv" => Some(Dialect::Ssv),
+            "psv" => Some(Dialect::Psv),
             _ => None,
         }
     }
@@ -62,26 +72,24 @@ impl Dialect {
     /// extension; ties are biased towards CSV (documented in the README).
     pub fn sniff(text: &str) -> Option<Self> {
         let line = text.lines().find(|line| !line.trim().is_empty())?;
-        let (mut commas, mut tabs, mut semicolons) = (0usize, 0usize, 0usize);
+        let mut counts = [0usize; Self::ALL.len()];
         let mut in_quotes = false;
         for byte in line.bytes() {
-            match byte {
-                b'"' => in_quotes = !in_quotes,
-                b',' if !in_quotes => commas += 1,
-                b'\t' if !in_quotes => tabs += 1,
-                b';' if !in_quotes => semicolons += 1,
-                _ => {}
+            if byte == b'"' {
+                in_quotes = !in_quotes;
+            } else if !in_quotes {
+                for (count, dialect) in counts.iter_mut().zip(Self::ALL) {
+                    if byte == dialect.delimiter() {
+                        *count += 1;
+                    }
+                }
             }
         }
-        // Ordered so that ties fall to the earlier (more common) dialect.
-        let counted = [
-            (commas, Dialect::Csv),
-            (tabs, Dialect::Tsv),
-            (semicolons, Dialect::Ssv),
-        ];
+        // `ALL` is ordered so that ties fall to the earlier (more common)
+        // dialect.
         let mut best = None;
         let mut best_count = 0;
-        for (count, dialect) in counted {
+        for (count, dialect) in counts.into_iter().zip(Self::ALL) {
             if count > best_count {
                 best_count = count;
                 best = Some(dialect);
@@ -100,6 +108,7 @@ mod tests {
         assert_eq!(Dialect::Csv.name(), "CSV");
         assert_eq!(Dialect::Tsv.name(), "TSV");
         assert_eq!(Dialect::Ssv.name(), "SSV");
+        assert_eq!(Dialect::Psv.name(), "PSV");
     }
 
     #[test]
@@ -107,6 +116,14 @@ mod tests {
         assert_eq!(Dialect::Csv.delimiter(), b',');
         assert_eq!(Dialect::Tsv.delimiter(), b'\t');
         assert_eq!(Dialect::Ssv.delimiter(), b';');
+        assert_eq!(Dialect::Psv.delimiter(), b'|');
+    }
+
+    #[test]
+    fn all_lists_every_dialect_once() {
+        for dialect in [Dialect::Csv, Dialect::Tsv, Dialect::Ssv, Dialect::Psv] {
+            assert_eq!(Dialect::ALL.iter().filter(|&&d| d == dialect).count(), 1);
+        }
     }
 
     #[test]
@@ -114,6 +131,7 @@ mod tests {
         assert_eq!(Dialect::from_language_id("csv"), Some(Dialect::Csv));
         assert_eq!(Dialect::from_language_id("TSV"), Some(Dialect::Tsv));
         assert_eq!(Dialect::from_language_id("ssv"), Some(Dialect::Ssv));
+        assert_eq!(Dialect::from_language_id("psv"), Some(Dialect::Psv));
         assert_eq!(Dialect::from_language_id("plaintext"), None);
     }
 
@@ -123,6 +141,7 @@ mod tests {
         assert_eq!(Dialect::from_path("/a/b/x.TSV"), Some(Dialect::Tsv));
         assert_eq!(Dialect::from_path("file:///w/x.tab"), Some(Dialect::Tsv));
         assert_eq!(Dialect::from_path("x.ssv"), Some(Dialect::Ssv));
+        assert_eq!(Dialect::from_path("dump.psv"), Some(Dialect::Psv));
         assert_eq!(Dialect::from_path("notes.txt"), None);
         assert_eq!(Dialect::from_path("no_extension"), None);
         assert_eq!(Dialect::from_path("/dotted.dir/no_extension"), None);
@@ -133,6 +152,7 @@ mod tests {
         assert_eq!(Dialect::sniff("a,b,c\n"), Some(Dialect::Csv));
         assert_eq!(Dialect::sniff("a\tb\tc\n"), Some(Dialect::Tsv));
         assert_eq!(Dialect::sniff("a;b;c\n"), Some(Dialect::Ssv));
+        assert_eq!(Dialect::sniff("a|b|c\n"), Some(Dialect::Psv));
     }
 
     #[test]
@@ -143,6 +163,7 @@ mod tests {
     #[test]
     fn sniff_ignores_delimiters_inside_quotes() {
         assert_eq!(Dialect::sniff("\"a,b\";c\n"), Some(Dialect::Ssv));
+        assert_eq!(Dialect::sniff("\"a;b\"|c\n"), Some(Dialect::Psv));
     }
 
     #[test]
@@ -155,5 +176,7 @@ mod tests {
     #[test]
     fn sniff_breaks_ties_towards_csv() {
         assert_eq!(Dialect::sniff("a,b;c\n"), Some(Dialect::Csv));
+        assert_eq!(Dialect::sniff("a,b|c\n"), Some(Dialect::Csv));
+        assert_eq!(Dialect::sniff("a;b|c\n"), Some(Dialect::Ssv));
     }
 }
