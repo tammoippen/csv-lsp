@@ -8,6 +8,9 @@ repository = "https://github.com/tammoippen/csv-lsp"
 license = "MIT"
 keywords = ["lsp", "language-server", "csv", "tsv"]
 categories = ["development-tools"]
+# Keep the published crate lean: just the binary's sources — not the html
+# docs, the gif recordings, or the vendored tree-sitter grammar.
+include = ["src/**", "README.md", "LICENSE"]
 
 [dependencies]
 lsp-server = "0.8"
