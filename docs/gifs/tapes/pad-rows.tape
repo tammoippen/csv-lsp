@@ -1,7 +1,7 @@
 # Pad quickfix on one row, then "Pad all short rows" from the header.
 # Run from the repository root:  vhs docs/gifs/tapes/pad-rows.tape
-# Menu positions assume the server's deterministic action order (docs/features.html#anatomy);
-# adjust the Down counts if your Helix version sorts the menu differently.
+# Menu selections are by position (Down counts) and match Helix's kind-sorted menu
+# (docs/features.html#anatomy); adjust the counts if your Helix version sorts differently.
 Output docs/gifs/pad-rows.gif
 Require hx
 Require csv-lsp
@@ -36,7 +36,8 @@ Type "gg"
 Sleep 800ms
 Type " a"
 Sleep 2s
-# Third entry now: "Pad all short rows (1)" (no quickfix on a complete row).
+# Entries: Quote cell / Quote column / Pad all short rows (1) / …  → entry 3
+# (no quickfix on a complete row; the quote refactors sort first).
 Down 2
 Enter
 Sleep 3s
