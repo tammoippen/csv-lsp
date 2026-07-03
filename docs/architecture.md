@@ -1,6 +1,6 @@
 # Architecture
 
-csv-lsp is a language server for delimiter-separated files (CSV/TSV/SSV). It is a
+csv-lsp is a language server for delimiter-separated files (CSV/TSV/SSV/PSV). It is a
 single Rust binary speaking the Language Server Protocol (LSP) over stdio, built on a
 **synchronous** main loop (`lsp-server`) and a **hand-written, error-tolerant CSV
 parser**. Everything below `main.rs` lives in the library target so tests can exercise
@@ -20,7 +20,7 @@ src/
 ├── capabilities.rs       position-encoding negotiation + ServerCapabilities construction
 ├── document.rs           Document (text + version + dialect + parse cache), Store (open docs)
 ├── position.rs           PositionEncoding, LineIndex, Span ↔ lsp::Range conversion
-├── dialect.rs            Dialect (Csv|Tsv|Ssv), detection: languageId → extension → sniff → Csv
+├── dialect.rs            Dialect (Csv|Tsv|Ssv|Psv), detection: languageId → extension → sniff → Csv
 ├── parse.rs              Span, Table/Row/Cell, ParseError, the state-machine parser
 ├── render.rs             Table → text: render(), column_widths(), encode_cell()
 ├── edits.rs              (Span, String) edits → lsp TextEdits; whole-doc diff minimization
@@ -45,7 +45,7 @@ feature introduces a new LSP *method* (rare — most features are code actions).
 ```rust
 pub struct Span { pub start: usize, pub end: usize }   // byte offsets, half-open
 
-pub enum Dialect { Csv, Tsv, Ssv }                     // delimiters: b','  b'\t'  b';'
+pub enum Dialect { Csv, Tsv, Ssv, Psv }                // delimiters: b','  b'\t'  b';'  b'|'
 pub enum LineTerminator { Lf, CrLf }                   // first terminator seen in the file
 
 pub struct Table {
