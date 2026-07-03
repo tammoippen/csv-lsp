@@ -27,8 +27,7 @@ Enter
 Sleep 800ms
 Type " a"
 Sleep 2s
-# Entries: Align / Reinterpret ×3 / Convert ×3 / Quote cell / Quote column "note" / … → entry 8.
-Down 7
+# First Entries
 Sleep 800ms
 Enter
 Sleep 2.5s
@@ -36,7 +35,6 @@ Sleep 2.5s
 Type " a"
 Sleep 2s
 # "Quote cell" is gone for the now-quoted cell; same position is "Quote column \"note\"".
-Down 7
 Sleep 800ms
 Enter
 Sleep 2.5s

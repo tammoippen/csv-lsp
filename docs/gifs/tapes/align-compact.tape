@@ -27,7 +27,8 @@ Sleep 2.5s
 
 Type " a"
 Sleep 1.5s
-# First entry: "Compact columns" (the file is aligned and clean, so nothing outranks it).
+# Third entry: "Compact columns" (the file is aligned and clean, so nothing outranks it).
+Down 2
 Enter
 Sleep 2.5s
 
