@@ -1,7 +1,9 @@
 # csv-lsp
 
-A language server for CSV, TSV and SSV (semicolon-separated) files, built for
-[Helix](https://helix-editor.com/) but working with any LSP client.
+A language server for CSV, TSV, SSV (semicolon-separated) and PSV
+(pipe-separated) files, built for [Helix](https://helix-editor.com/) but
+working with any LSP client. Ships a tree-sitter grammar for rainbow
+column colors on all four dialects.
 
 Editing delimiter-separated files by hand is fiddly: a missing cell breaks the
 column contract three screens later, quoting rules are easy to violate, and
@@ -27,13 +29,13 @@ with fixes attached.
 
 - **Compact columns** — strip that padding again (`Compact columns` source
   action). Align ⇄ compact round-trips byte-for-byte.
-- **Reinterpret as CSV/TSV/SSV** — for files whose extension lies (a `.csv`
-  that is actually semicolon-separated): switches how the server *parses*
-  the file, zero text changes. Session-scoped; the durable fixes are
-  renaming the file or converting it.
-- **Convert to CSV/TSV/SSV** — rewrite the text to a different delimiter.
-  Quoting adapts automatically (`bolzen;1,50` → `bolzen,"1,50"`), and the
-  server keeps parsing under the new dialect after you apply it.
+- **Reinterpret as CSV/TSV/SSV/PSV** — for files whose extension lies (a
+  `.csv` that is actually semicolon-separated): switches how the server
+  *parses* the file, zero text changes. Session-scoped; the durable fixes
+  are renaming the file or converting it.
+- **Convert to CSV/TSV/SSV/PSV** — rewrite the text to a different
+  delimiter. Quoting adapts automatically (`bolzen;1,50` → `bolzen,"1,50"`),
+  and the server keeps parsing under the new dialect after you apply it.
 - **Quote cell / quote column** — wrap the cell under the cursor (or every
   unquoted cell of its column, header included) in RFC 4180 quotes. Padding
   stays outside the quotes; already-quoted cells are left alone.
@@ -65,6 +67,12 @@ Add to `~/.config/helix/languages.toml`:
 [language-server.csv-lsp]
 command = "csv-lsp"
 
+# Rainbow-column grammar shipped in this repository (see below; pin `rev`
+# to a commit for reproducible builds).
+[[grammar]]
+name = "csv"
+source = { git = "https://github.com/tammoippen/csv-lsp", rev = "main", subpath = "tree-sitter-rainbow-csv" }
+
 [[language]]
 name = "csv"
 scope = "text.csv"
@@ -77,6 +85,7 @@ name = "tsv"
 scope = "text.tsv"
 file-types = ["tsv", "tab"]
 language-servers = ["csv-lsp"]
+grammar = "csv"                # tsv/ssv/psv reuse the csv grammar
 auto-format = false
 
 [[language]]
@@ -84,14 +93,20 @@ name = "ssv"
 scope = "text.ssv"
 file-types = ["ssv"]
 language-servers = ["csv-lsp"]
-grammar = "csv"                # rainbow columns — reuse the built-in csv grammar
+grammar = "csv"
+auto-format = false
+
+[[language]]
+name = "psv"
+scope = "text.psv"
+file-types = ["psv"]
+language-servers = ["csv-lsp"]
+grammar = "csv"
 auto-format = false
 ```
 
-Diagnostics, code actions and `:format` need nothing beyond these entries —
-csv-lsp works without any grammar. Keeping `name = "csv"` identical to the
-built-in language makes the entry merge with it. Verify with
-`hx --health csv`.
+Diagnostics, code actions and `:format` need nothing beyond the language
+entries — csv-lsp works without any grammar. Verify with `hx --health csv`.
 
 Daily driving: diagnostics appear as you type; `space`+`a` opens the code
 actions (pad row, pad all, align, compact, reinterpret, convert, quote
@@ -103,31 +118,39 @@ cursors, ready for typing).
 
 Helix highlights exclusively through tree-sitter — it has no LSP
 semantic-token support, so csv-lsp (or any language server) cannot color
-columns. The rainbow on `.csv` files comes from the `csv` grammar and
-queries Helix ships since 25.07; the entry above merges with that built-in
-language by name and keeps them.
+columns. Colors come from a grammar plus per-language queries, and this
+repository ships both in
+[`tree-sitter-rainbow-csv/`](tree-sitter-rainbow-csv/): the grammar Helix
+bundles for csv derails on empty cells (`a,b,,,` breaks its parse and
+neighboring rows change color), errors past the 7th column and does not
+know tab delimiters; the vendored rewrite fixes all of that — same node
+names, so existing themes and queries keep working.
 
-- **ssv** — the built-in grammar splits on `;` and `|` too, which is what
-  `grammar = "csv"` above taps into. Helix resolves query files by
-  *language* name, so a new language needs its own queries — one line,
-  inheriting the bundled ones:
+With the `[[grammar]]` override above, build the parser once:
 
-  ```sh
-  mkdir -p ~/.config/helix/runtime/queries/ssv
-  echo '; inherits: csv' > ~/.config/helix/runtime/queries/ssv/highlights.scm
-  ```
+```sh
+hx --grammar fetch && hx --grammar build
+```
 
-- **tsv** — no rainbow: the grammar does not treat tab as a delimiter.
-  Everything csv-lsp provides works regardless.
-- **Empty cells shift colors** — the grammar cannot represent empty cells
-  (and errors past the 7th column), so a row like `a,b,,,` fails to parse
-  and tree-sitter's error recovery bleeds the column cycle into
-  neighboring rows. That is an upstream bug in
-  [weartist/rainbow-csv-tree-sitter] (the grammar Helix pins), out of
-  reach of csv-lsp and of custom query files alike — it needs a grammar
-  fix.
+Helix resolves queries by *language* name. Install this repo's queries for
+`csv` (they override the bundled ones and add the tab delimiter) and let
+the other languages inherit them:
 
-[weartist/rainbow-csv-tree-sitter]: https://github.com/weartist/rainbow-csv-tree-sitter
+```sh
+Q=~/.config/helix/runtime/queries
+mkdir -p "$Q"/{csv,tsv,ssv,psv}
+cp csv-lsp/tree-sitter-rainbow-csv/queries/highlights.scm "$Q"/csv/
+for l in tsv ssv psv; do echo '; inherits: csv' > "$Q"/$l/highlights.scm; done
+```
+
+One caveat, cosmetic and shared with the bundled grammar: the grammar
+splits on all four delimiters in every file (tree-sitter has no per-file
+dialect detection), so a bare `,` inside an unquoted SSV cell starts a new
+color. Quote the cell if it bothers you — csv-lsp's diagnostics always
+follow the file's real dialect and are unaffected. Skipping the grammar
+override also works: Helix ≥ 25.07 still rainbows csv/ssv/psv through the
+bundled grammar, with its empty-cell color shifts; tsv rows render as a
+single column.
 
 ## Dialects and conventions
 
@@ -136,6 +159,7 @@ language by name and keeps them.
 | csv | `,` | `.csv` |
 | tsv | tab | `.tsv`, `.tab` |
 | ssv | `;` | `.ssv` |
+| psv | pipe | `.psv` |
 
 - Dialect detection order: LSP `languageId` → file extension → content
   sniffing (delimiters counted outside quotes in the first non-blank line,
