@@ -68,6 +68,9 @@ pub fn server_capabilities(enc: PositionEncoding) -> ServerCapabilities {
             ..Default::default()
         })),
         document_formatting_provider: Some(OneOf::Left(true)),
+        // Helix turns highlight responses into multi-selections (Space+h) —
+        // this is how "select the column" works (docs/plan/m7).
+        document_highlight_provider: Some(OneOf::Left(true)),
         execute_command_provider: Some(ExecuteCommandOptions {
             commands: vec![SET_DIALECT_COMMAND.to_owned()],
             ..Default::default()
@@ -122,6 +125,7 @@ mod tests {
         let caps = server_capabilities(PositionEncoding::Utf8);
         assert_eq!(caps.position_encoding, Some(PositionEncodingKind::UTF8));
         assert_eq!(caps.document_formatting_provider, Some(OneOf::Left(true)));
+        assert_eq!(caps.document_highlight_provider, Some(OneOf::Left(true)));
 
         let Some(TextDocumentSyncCapability::Options(sync)) = caps.text_document_sync else {
             panic!("expected sync options");
